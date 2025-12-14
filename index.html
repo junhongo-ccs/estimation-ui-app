@@ -9,6 +9,7 @@
     <script>
         // Azure Functions (estimate-agent-backend)
         window.ENHANCE_BASE = "https://estimate-api-cli.azurewebsites.net";
+        window.DEBUG = true; // PoC時のみ
     </script>
 </head>
 
@@ -104,6 +105,13 @@
                 })();
 
                 // ヘルパー関数
+                const DEBUG = !!window.DEBUG;
+
+                function logErr(...args) {
+                    if (DEBUG) console.error(...args);
+                    else console.warn(...args);
+                }
+
                 function escapeHtml(text) {
                     const div = document.createElement('div');
                     div.textContent = text;
@@ -126,45 +134,50 @@
                         });
                         const bodyText = await res.text();
                         if (!res.ok) {
-                            console.error("[enhance_estimate] failed", { status: res.status, url, body: bodyText });
+                            logErr("[enhance_estimate] failed", { status: res.status, url, body: bodyText });
                             throw new Error(`enhance_estimate failed: ${res.status}`);
                         }
                         return JSON.parse(bodyText);
                     } catch (err) {
-                        console.error("[enhance_estimate] error", { url, error: err.message });
+                        logErr("[enhance_estimate] error", { url, error: err.message });
                         throw err;
                     }
                 }
 
-                function renderAI(ai) {
-                    const box = document.getElementById("ai-adjustment");
+                function renderAIHtml(ai) {
                     if (!ai || ai.status !== "ok") {
-                        box.hidden = true;
-                        return;
+                        return "";
                     }
 
                     const adjusted = ai.adjustment && ai.adjustment.adjusted_amount;
-                    if (typeof adjusted === "number") {
-                        document.getElementById("ai-adjusted").textContent = `¥${formatJPY(adjusted)}`;
-                    } else {
-                        document.getElementById("ai-adjusted").textContent = "-";
-                    }
+                    const adjustedStr = typeof adjusted === "number" ? `¥${formatJPY(adjusted)}` : "-";
 
-                    const ul = document.getElementById("ai-reasons");
-                    ul.innerHTML = "";
-                    // UIラベルのみ最小辞書（サーバー側で日本語を保証）
-                    const labelDict = {
-                        "Multiplier": "補正倍率",
-                        "Adjusted": "補正後金額"
-                    };
-                    (ai.adjustment?.reasons || []).forEach(r => {
-                        const li = document.createElement("li");
-                        li.textContent = r; // サーバー側の日本語を信頼
-                        ul.appendChild(li);
-                    });
+                    const reasons = (ai.adjustment?.reasons || []).map(r => `<li>${escapeHtml(r)}</li>`).join("");
 
+                    return `
+                        <details open>
+                            <summary>AI補正案（参考・自動生成）</summary>
+                            <div class="doc--8px u-mt-8">
+                                <p><strong>補正後目安：</strong><span>${adjustedStr}</span></p>
+                                ${reasons ? `<ul>${reasons}</ul>` : ""}
+                                <p class="u-mt-8"><small>※参考情報（最終判断は担当者）</small></p>
+                            </div>
+                        </details>
+                    `;
+                }
+
+                function setAIState(state, html = "") {
+                    const box = document.getElementById("ai-adjustment");
+                    if (!box) return;
                     box.hidden = false;
-                    box.open = false; // 初期は閉じる
+
+                    if (state === "loading") {
+                        box.innerHTML = "<div class='u-mt-8'>AI補正を取得中…</div>";
+                    } else if (state === "ok") {
+                        box.innerHTML = html;
+                    } else if (state === "fail") {
+                        box.innerHTML = `<div class='u-mt-8'>AI補正の取得に失敗しました（概算見積は表示できます）</div>${html ? `<div class="u-mt-8"><small style="color: #888;">${escapeHtml(html)}</small></div>` : ""}`;
+                    }
                 }
 
                 form.addEventListener("submit", async (e) => {
@@ -256,6 +269,7 @@
                             footerEl.textContent = `Config Version: ${data.config_version}`;
                         }
                         // --- AI補正（参考）呼び出し ---
+                        setAIState("loading");
                         try {
                             const coreResult = { status: data.status, estimated_amount: data.estimated_amount, currency: data.currency };
                             const ai = await callAIEnhance({
@@ -264,15 +278,10 @@
                                 scope: payload.scope,
                                 coreResult
                             });
-                            renderAI(ai);
+                            setAIState("ok", renderAIHtml(ai));
                         } catch (err) {
-                            console.error("[enhance_estimate] AI補正の取得に失敗", err);
-                            const box = document.getElementById("ai-adjustment");
-                            box.hidden = false;
-                            const summary = box.querySelector("summary");
-                            if (summary) summary.textContent = "AI補正案（取得失敗）";
-                            const content = box.querySelector(".doc--8px");
-                            if (content) content.innerHTML = '<p style="color: #888;">AI補正の取得に失敗しました（概算見積は表示できます）</p>';
+                            logErr("[enhance_estimate] AI補正の取得に失敗", err);
+                            setAIState("fail", String(err?.message || err));
                         }
 
                     } catch (err) {
