@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>見積UI</title>
+</head>
+<body>
+  <h1>AI見積UI</h1>
+
+  <form id="f">
+    <div>
+      <label>案件名</label><br/>
+      <input name="project_name" value="テスト案件" required />
+    </div>
+    <div>
+      <label>要約</label><br/>
+      <input name="summary" value="UI改善" required />
+    </div>
+    <div>
+      <label>範囲</label><br/>
+      <input name="scope" value="要件〜実装" required />
+    </div>
+    <div>
+      <label>画面数</label><br/>
+      <input name="screen_count" type="number" value="12" min="1" required />
+    </div>
+    <div>
+      <label>難易度</label><br/>
+      <select name="complexity">
+        <option>low</option>
+        <option selected>medium</option>
+        <option>high</option>
+      </select>
+    </div>
+
+    <button type="submit">見積る</button>
+  </form>
+
+  <hr/>
+  <div id="out"></div>
+
+  <script>
+    // NOTE: Codespacesでは 127.0.0.1:8001 はブラウザから届かないので、まずは同一オリジン経由にします。
+    // UIは /estimate にPOSTし、あとでリバプロ or 同一サーバ化します。
+    const form = document.getElementById("f");
+    const out = document.getElementById("out");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      out.textContent = "計算中...";
+
+      const fd = new FormData(form);
+      const payload = Object.fromEntries(fd.entries());
+      payload.screen_count = Number(payload.screen_count);
+
+      // いったん仮：Agent Core のURLはあとで差し替え（次ステップで設定します）
+      const AGENT_BASE = window.AGENT_BASE || "http://127.0.0.1:8001";
+
+      const res = await fetch(`${AGENT_BASE}/estimate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const html = await res.text();
+      out.innerHTML = html;
+    });
+  </script>
+</body>
+</html>
