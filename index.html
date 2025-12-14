@@ -43,6 +43,15 @@
     <hr />
     <div id="status" class="u-mb-8"></div>
     <div id="summary" class="u-mb-16"></div>
+    <!-- AI補正（参考） -->
+    <details id="ai-adjustment" class="u-mt-8" hidden>
+        <summary>AI補正案（参考）</summary>
+        <div class="doc--8px u-mt-8">
+            <p><strong>補正後目安：</strong><span id="ai-adjusted"></span></p>
+            <ul id="ai-reasons"></ul>
+            <p class="u-mt-8"><small>※参考情報（最終判断は担当者）</small></p>
+        </div>
+    </details>
     <div id="out" class="doc--8px u-mt-8"></div>
 
     <div id="details" class="u-mt-16" style="display:none;">
@@ -80,6 +89,63 @@
                 // ローカル環境
                 return "http://127.0.0.1:8001";
             })();
+
+            // Backend（AI）のベースURL（Codespaces/ローカル両対応）
+            const AI_BASE = (() => {
+                const h = location.hostname;
+                if (h.includes("github.dev")) return `https://${h.replace("-8002", "-7071")}`;
+                return "http://127.0.0.1:7071";
+            })();
+
+            async function callAIEnhance({ project_name, summary, scope, coreResult }) {
+                try {
+                    const res = await fetch(`${AI_BASE}/api/enhance_estimate`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ project_name, summary, scope, core_result: coreResult })
+                    });
+                    if (!res.ok) return null;
+                    return await res.json();
+                } catch {
+                    return null; // AI失敗でもUIは壊さない
+                }
+            }
+
+            function renderAI(ai) {
+                const box = document.getElementById("ai-adjustment");
+                if (!ai || ai.status !== "ok") {
+                    box.hidden = true;
+                    return;
+                }
+
+                const adjusted = ai.adjustment && ai.adjustment.adjusted_amount;
+                if (typeof adjusted === "number") {
+                    document.getElementById("ai-adjusted").textContent = `¥${adjusted.toLocaleString("ja-JP")}`;
+                } else {
+                    document.getElementById("ai-adjusted").textContent = "-";
+                }
+
+                const ul = document.getElementById("ai-reasons");
+                ul.innerHTML = "";
+                // 英語の定型文を日本語へ簡易置換
+                const simpleDict = {
+                    "Insufficient information to suggest a higher multiplier.": "係数を上げるための情報が不足しています。",
+                    "Project details are generic and do not indicate specific risks or complexities.": "プロジェクト詳細が一般的で、特有のリスクや複雑性は示されていません。",
+                    "Reusing existing assets reduces effort.": "既存資産の再利用により工数が削減されます。",
+                    "Scope clarification improves efficiency.": "スコープの明確化により効率が向上します。",
+                    "Leverage existing components to reduce cost.": "既存コンポーネントの活用でコストを削減します。",
+                    "No significant external dependencies identified.": "重大な外部依存は確認されていません。"
+                };
+                (ai.adjustment?.reasons || []).forEach(r => {
+                    const jp = simpleDict[r?.trim?.()] || r;
+                    const li = document.createElement("li");
+                    li.textContent = jp;
+                    ul.appendChild(li);
+                });
+
+                box.hidden = false;
+                box.open = false; // 初期は閉じる
+            }
 
             form.addEventListener("submit", async (e) => {
                 e.preventDefault();
@@ -169,6 +235,16 @@
                     if (data.config_version) {
                         footerEl.textContent = `Config Version: ${data.config_version}`;
                     }
+                    // --- AI補正（参考）呼び出し ---
+                    const coreResult = { status: data.status, estimated_amount: data.estimated_amount, currency: data.currency };
+                    const ai = await callAIEnhance({
+                        project_name: payload.project_name,
+                        summary: payload.summary,
+                        scope: payload.scope,
+                        coreResult
+                    });
+                    renderAI(ai);
+
                 } catch (err) {
                     console.error("[estimate] error:", err);
                     statusEl.textContent = `Fetch failed: ${err}`;
