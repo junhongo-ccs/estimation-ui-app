@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>見積UI</title>
     <link rel="stylesheet" href="static/css/style.css" />
+    <script>
+        // Azure Functions (estimate-agent-backend)
+        window.ENHANCE_BASE = "https://estimate-api-cli.azurewebsites.net";
+    </script>
 </head>
 
 <body>
@@ -91,24 +95,44 @@
                     return "http://127.0.0.1:8001";
                 })();
 
-                // Backend（AI）のベースURL（Codespaces/ローカル両対応）
-                const AI_BASE = (() => {
+                // Azure Functions（AI補正）のベースURL
+                // window.ENHANCE_BASE で上書き可能（本番: https://estimate-api-cli.azurewebsites.net）
+                const ENHANCE_BASE = window.ENHANCE_BASE ?? (() => {
                     const h = location.hostname;
                     if (h.includes("github.dev")) return `https://${h.replace("-8002", "-7071")}`;
                     return "http://127.0.0.1:7071";
                 })();
 
+                // ヘルパー関数
+                function escapeHtml(text) {
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                }
+
+                function formatJPY(amount) {
+                    const num = Math.trunc(Number(amount));
+                    if (!Number.isFinite(num)) return "-";
+                    return new Intl.NumberFormat("ja-JP").format(num);
+                }
+
                 async function callAIEnhance({ project_name, summary, scope, coreResult }) {
+                    const url = `${ENHANCE_BASE}/api/enhance_estimate`;
                     try {
-                        const res = await fetch(`${AI_BASE}/api/enhance_estimate`, {
+                        const res = await fetch(url, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ project_name, summary, scope, core_result: coreResult })
                         });
-                        if (!res.ok) return null;
-                        return await res.json();
-                    } catch {
-                        return null; // AI失敗でもUIは壊さない
+                        const bodyText = await res.text();
+                        if (!res.ok) {
+                            console.error("[enhance_estimate] failed", { status: res.status, url, body: bodyText });
+                            throw new Error(`enhance_estimate failed: ${res.status}`);
+                        }
+                        return JSON.parse(bodyText);
+                    } catch (err) {
+                        console.error("[enhance_estimate] error", { url, error: err.message });
+                        throw err;
                     }
                 }
 
@@ -121,26 +145,21 @@
 
                     const adjusted = ai.adjustment && ai.adjustment.adjusted_amount;
                     if (typeof adjusted === "number") {
-                        document.getElementById("ai-adjusted").textContent = `¥${adjusted.toLocaleString("ja-JP")}`;
+                        document.getElementById("ai-adjusted").textContent = `¥${formatJPY(adjusted)}`;
                     } else {
                         document.getElementById("ai-adjusted").textContent = "-";
                     }
 
                     const ul = document.getElementById("ai-reasons");
                     ul.innerHTML = "";
-                    // 英語の定型文を日本語へ簡易置換
-                    const simpleDict = {
-                        "Insufficient information to suggest a higher multiplier.": "係数を上げるための情報が不足しています。",
-                        "Project details are generic and do not indicate specific risks or complexities.": "プロジェクト詳細が一般的で、特有のリスクや複雑性は示されていません。",
-                        "Reusing existing assets reduces effort.": "既存資産の再利用により工数が削減されます。",
-                        "Scope clarification improves efficiency.": "スコープの明確化により効率が向上します。",
-                        "Leverage existing components to reduce cost.": "既存コンポーネントの活用でコストを削減します。",
-                        "No significant external dependencies identified.": "重大な外部依存は確認されていません。"
+                    // UIラベルのみ最小辞書（サーバー側で日本語を保証）
+                    const labelDict = {
+                        "Multiplier": "補正倍率",
+                        "Adjusted": "補正後金額"
                     };
                     (ai.adjustment?.reasons || []).forEach(r => {
-                        const jp = simpleDict[r?.trim?.()] || r;
                         const li = document.createElement("li");
-                        li.textContent = jp;
+                        li.textContent = r; // サーバー側の日本語を信頼
                         ul.appendChild(li);
                     });
 
@@ -237,14 +256,24 @@
                             footerEl.textContent = `Config Version: ${data.config_version}`;
                         }
                         // --- AI補正（参考）呼び出し ---
-                        const coreResult = { status: data.status, estimated_amount: data.estimated_amount, currency: data.currency };
-                        const ai = await callAIEnhance({
-                            project_name: payload.project_name,
-                            summary: payload.summary,
-                            scope: payload.scope,
-                            coreResult
-                        });
-                        renderAI(ai);
+                        try {
+                            const coreResult = { status: data.status, estimated_amount: data.estimated_amount, currency: data.currency };
+                            const ai = await callAIEnhance({
+                                project_name: payload.project_name,
+                                summary: payload.summary,
+                                scope: payload.scope,
+                                coreResult
+                            });
+                            renderAI(ai);
+                        } catch (err) {
+                            console.error("[enhance_estimate] AI補正の取得に失敗", err);
+                            const box = document.getElementById("ai-adjustment");
+                            box.hidden = false;
+                            const summary = box.querySelector("summary");
+                            if (summary) summary.textContent = "AI補正案（取得失敗）";
+                            const content = box.querySelector(".doc--8px");
+                            if (content) content.innerHTML = '<p style="color: #888;">AI補正の取得に失敗しました（概算見積は表示できます）</p>';
+                        }
 
                     } catch (err) {
                         console.error("[estimate] error:", err);
