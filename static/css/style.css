@@ -7,6 +7,15 @@
     margin-bottom: 8px;
 }
 
+/* Additional spacing utilities */
+.u-mt-16 {
+    margin-top: 16px;
+}
+
+.u-mb-16 {
+    margin-bottom: 16px;
+}
+
 .u-pt-16 {
     padding-top: 16px;
 }
@@ -22,6 +31,7 @@
 /* ===== Document base ===== */
 .doc--8px p {
     margin: 0 0 8px;
+    line-height: 1.5;
 }
 
 .doc--8px h1,
@@ -34,4 +44,13 @@
 .doc--8px ol {
     margin: 0 0 8px;
     padding-left: 24px;
+}
+
+/* ===== Layout containers ===== */
+.l-container-800 {
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 24px;
+    box-sizing: border-box;
 }

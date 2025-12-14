@@ -9,250 +9,252 @@
 </head>
 
 <body>
-    <h1>AI見積UI</h1>
+    <div class="l-container-800">
+        <h1 class="u-mb-16">AI見積UI</h1>
 
-    <form id="f">
-        <div>
-            <label>案件名</label><br />
-            <input name="project_name" value="テスト案件" required />
-        </div>
-        <div>
-            <label>要約</label><br />
-            <input name="summary" value="UI改善" required />
-        </div>
-        <div>
-            <label>範囲</label><br />
-            <input name="scope" value="要件〜実装" required />
-        </div>
-        <div>
-            <label>画面数</label><br />
-            <input name="screen_count" type="number" value="12" min="1" required />
-        </div>
-        <div>
-            <label>難易度</label><br />
-            <select name="complexity">
-                <option>low</option>
-                <option selected>medium</option>
-                <option>high</option>
-            </select>
-        </div>
+        <form id="f" class="u-mt-8">
+            <div>
+                <label>案件名</label><br />
+                <input name="project_name" value="テスト案件" required />
+            </div>
+            <div>
+                <label>要約</label><br />
+                <input name="summary" value="UI改善" required />
+            </div>
+            <div>
+                <label>範囲</label><br />
+                <input name="scope" value="要件〜実装" required />
+            </div>
+            <div>
+                <label>画面数</label><br />
+                <input name="screen_count" type="number" value="12" min="1" required />
+            </div>
+            <div>
+                <label>難易度</label><br />
+                <select name="complexity">
+                    <option>low</option>
+                    <option selected>medium</option>
+                    <option>high</option>
+                </select>
+            </div>
 
-        <button type="submit">見積る</button>
-    </form>
+            <button type="submit" class="u-mt-16">見積る</button>
+        </form>
 
-    <hr />
-    <div id="status" class="u-mb-8"></div>
-    <div id="summary" class="u-mb-16"></div>
-    <!-- AI補正（参考） -->
-    <details id="ai-adjustment" class="u-mt-8" hidden>
-        <summary>AI補正案（参考・自動生成）</summary>
-        <div class="doc--8px u-mt-8">
-            <p><strong>補正後目安：</strong><span id="ai-adjusted"></span></p>
-            <ul id="ai-reasons"></ul>
-            <p class="u-mt-8"><small>※参考情報（最終判断は担当者）</small></p>
-        </div>
-    </details>
-    <div id="out" class="doc--8px u-mt-8"></div>
-
-    <div id="details" class="u-mt-16" style="display:none;">
-        <details class="u-mb-8">
-            <summary style="cursor: pointer; font-weight: bold; padding: 8px 0;">⚠️ 注意事項 (Warnings)</summary>
-            <div id="warnings" class="u-mt-8" style="padding-left: 16px; color: #666;"></div>
+        <hr />
+        <div id="status" class="u-mb-8"></div>
+        <div id="summary" class="u-mb-16"></div>
+        <!-- AI補正（参考） -->
+        <details id="ai-adjustment" class="u-mt-8" hidden>
+            <summary>AI補正案（参考・自動生成）</summary>
+            <div class="doc--8px u-mt-8">
+                <p><strong>補正後目安：</strong><span id="ai-adjusted"></span></p>
+                <ul id="ai-reasons"></ul>
+                <p class="u-mt-8"><small>※参考情報（最終判断は担当者）</small></p>
+            </div>
         </details>
-        <details class="u-mb-8">
-            <summary style="cursor: pointer; font-weight: bold; padding: 8px 0;">📋 前提条件 (Assumptions)</summary>
-            <div id="assumptions" class="u-mt-8" style="padding-left: 16px; color: #666;"></div>
-        </details>
-    </div>
+        <div id="out" class="doc--8px u-mt-8"></div>
 
-    <footer id="footer" class="u-mt-16"
-        style="padding-top: 16px; border-top: 1px solid #ddd; color: #888; font-size: 0.875rem;">
-    </footer>
+        <div id="details" class="u-mt-16" style="display:none;">
+            <details class="u-mb-8">
+                <summary style="cursor: pointer; font-weight: bold; padding: 8px 0;">⚠️ 注意事項 (Warnings)</summary>
+                <div id="warnings" class="u-mt-8" style="padding-left: 16px; color: #666;"></div>
+            </details>
+            <details class="u-mb-8">
+                <summary style="cursor: pointer; font-weight: bold; padding: 8px 0;">📋 前提条件 (Assumptions)</summary>
+                <div id="assumptions" class="u-mt-8" style="padding-left: 16px; color: #666;"></div>
+            </details>
+        </div>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const form = document.getElementById("f");
-            const out = document.getElementById("out");
-            const statusEl = document.getElementById("status");
-            const summaryEl = document.getElementById("summary");
+        <footer id="footer" class="u-mt-16"
+            style="padding-top: 16px; border-top: 1px solid #ddd; color: #888; font-size: 0.875rem;">
+        </footer>
 
-            // Single-source override: set window.AGENT_BASE via inline script when needed.
-            // Auto-detect Codespace environment; fallback to localhost
-            const AGENT_BASE = window.AGENT_BASE ?? (() => {
-                const hostname = window.location.hostname;
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                const form = document.getElementById("f");
+                const out = document.getElementById("out");
+                const statusEl = document.getElementById("status");
+                const summaryEl = document.getElementById("summary");
 
-                // Codespaces（HTTPS必須）
-                if (hostname.includes("github.dev")) {
-                    return `https://${hostname.replace("-8002", "-8001")}`;
-                }
+                // Single-source override: set window.AGENT_BASE via inline script when needed.
+                // Auto-detect Codespace environment; fallback to localhost
+                const AGENT_BASE = window.AGENT_BASE ?? (() => {
+                    const hostname = window.location.hostname;
 
-                // ローカル環境
-                return "http://127.0.0.1:8001";
-            })();
+                    // Codespaces（HTTPS必須）
+                    if (hostname.includes("github.dev")) {
+                        return `https://${hostname.replace("-8002", "-8001")}`;
+                    }
 
-            // Backend（AI）のベースURL（Codespaces/ローカル両対応）
-            const AI_BASE = (() => {
-                const h = location.hostname;
-                if (h.includes("github.dev")) return `https://${h.replace("-8002", "-7071")}`;
-                return "http://127.0.0.1:7071";
-            })();
+                    // ローカル環境
+                    return "http://127.0.0.1:8001";
+                })();
 
-            async function callAIEnhance({ project_name, summary, scope, coreResult }) {
-                try {
-                    const res = await fetch(`${AI_BASE}/api/enhance_estimate`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ project_name, summary, scope, core_result: coreResult })
-                    });
-                    if (!res.ok) return null;
-                    return await res.json();
-                } catch {
-                    return null; // AI失敗でもUIは壊さない
-                }
-            }
+                // Backend（AI）のベースURL（Codespaces/ローカル両対応）
+                const AI_BASE = (() => {
+                    const h = location.hostname;
+                    if (h.includes("github.dev")) return `https://${h.replace("-8002", "-7071")}`;
+                    return "http://127.0.0.1:7071";
+                })();
 
-            function renderAI(ai) {
-                const box = document.getElementById("ai-adjustment");
-                if (!ai || ai.status !== "ok") {
-                    box.hidden = true;
-                    return;
-                }
-
-                const adjusted = ai.adjustment && ai.adjustment.adjusted_amount;
-                if (typeof adjusted === "number") {
-                    document.getElementById("ai-adjusted").textContent = `¥${adjusted.toLocaleString("ja-JP")}`;
-                } else {
-                    document.getElementById("ai-adjusted").textContent = "-";
-                }
-
-                const ul = document.getElementById("ai-reasons");
-                ul.innerHTML = "";
-                // 英語の定型文を日本語へ簡易置換
-                const simpleDict = {
-                    "Insufficient information to suggest a higher multiplier.": "係数を上げるための情報が不足しています。",
-                    "Project details are generic and do not indicate specific risks or complexities.": "プロジェクト詳細が一般的で、特有のリスクや複雑性は示されていません。",
-                    "Reusing existing assets reduces effort.": "既存資産の再利用により工数が削減されます。",
-                    "Scope clarification improves efficiency.": "スコープの明確化により効率が向上します。",
-                    "Leverage existing components to reduce cost.": "既存コンポーネントの活用でコストを削減します。",
-                    "No significant external dependencies identified.": "重大な外部依存は確認されていません。"
-                };
-                (ai.adjustment?.reasons || []).forEach(r => {
-                    const jp = simpleDict[r?.trim?.()] || r;
-                    const li = document.createElement("li");
-                    li.textContent = jp;
-                    ul.appendChild(li);
-                });
-
-                box.hidden = false;
-                box.open = false; // 初期は閉じる
-            }
-
-            form.addEventListener("submit", async (e) => {
-                e.preventDefault();
-
-                statusEl.textContent = "入力を送信しました。見積もり生成中…";
-                out.textContent = "計算中...";
-                summaryEl.textContent = "";
-                const payload = Object.fromEntries(new FormData(form).entries());
-                payload.screen_count = Number(payload.screen_count);
-
-                const url = `${AGENT_BASE}/estimate`;
-                console.log("[estimate] url:", url, "payload:", payload);
-
-                try {
-                    const res = await fetch(url, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload),
-                    });
-                    console.log("[estimate] response status:", res.status);
-                    const bodyText = await res.text();
-                    let data = null;
+                async function callAIEnhance({ project_name, summary, scope, coreResult }) {
                     try {
-                        data = JSON.parse(bodyText);
-                    } catch (e) {
-                        console.error("[estimate] invalid JSON:", bodyText);
-                        statusEl.textContent = `Error ${res.status}: invalid JSON`;
-                        out.textContent = bodyText;
+                        const res = await fetch(`${AI_BASE}/api/enhance_estimate`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ project_name, summary, scope, core_result: coreResult })
+                        });
+                        if (!res.ok) return null;
+                        return await res.json();
+                    } catch {
+                        return null; // AI失敗でもUIは壊さない
+                    }
+                }
+
+                function renderAI(ai) {
+                    const box = document.getElementById("ai-adjustment");
+                    if (!ai || ai.status !== "ok") {
+                        box.hidden = true;
                         return;
                     }
 
-                    // Expected schema:
-                    // { status: "ok"|"error", estimated_amount: number, currency: "JPY", message: string|null }
-                    console.log("[estimate] response json:", data);
-
-                    if (!res.ok || data.status !== "ok") {
-                        // ビジネス向けの簡潔な文言のみ表示
-                        statusEl.textContent = "現在、概算を算出できません";
-                        summaryEl.textContent = ""; // 非表示扱い
-                        out.classList.remove("doc--8px"); // 失敗時は適用しない
-                        out.textContent = "";
-                        return;
+                    const adjusted = ai.adjustment && ai.adjustment.adjusted_amount;
+                    if (typeof adjusted === "number") {
+                        document.getElementById("ai-adjusted").textContent = `¥${adjusted.toLocaleString("ja-JP")}`;
+                    } else {
+                        document.getElementById("ai-adjusted").textContent = "-";
                     }
 
-                    statusEl.textContent = "見積もり生成が完了しました。";
-                    // 金額は円（整数）で表示し、通貨コードは出さない（JPY固定前提）
-                    const amountNum = Math.trunc(Number(data.estimated_amount));
-                    if (Number.isFinite(amountNum)) {
-                        const formatter = new Intl.NumberFormat("ja-JP");
-                        const amountStr = `¥${formatter.format(amountNum)}`;
-                        // 見出しと補足文を含めて表示
-                        summaryEl.innerHTML = `
+                    const ul = document.getElementById("ai-reasons");
+                    ul.innerHTML = "";
+                    // 英語の定型文を日本語へ簡易置換
+                    const simpleDict = {
+                        "Insufficient information to suggest a higher multiplier.": "係数を上げるための情報が不足しています。",
+                        "Project details are generic and do not indicate specific risks or complexities.": "プロジェクト詳細が一般的で、特有のリスクや複雑性は示されていません。",
+                        "Reusing existing assets reduces effort.": "既存資産の再利用により工数が削減されます。",
+                        "Scope clarification improves efficiency.": "スコープの明確化により効率が向上します。",
+                        "Leverage existing components to reduce cost.": "既存コンポーネントの活用でコストを削減します。",
+                        "No significant external dependencies identified.": "重大な外部依存は確認されていません。"
+                    };
+                    (ai.adjustment?.reasons || []).forEach(r => {
+                        const jp = simpleDict[r?.trim?.()] || r;
+                        const li = document.createElement("li");
+                        li.textContent = jp;
+                        ul.appendChild(li);
+                    });
+
+                    box.hidden = false;
+                    box.open = false; // 初期は閉じる
+                }
+
+                form.addEventListener("submit", async (e) => {
+                    e.preventDefault();
+
+                    statusEl.textContent = "入力を送信しました。見積もり生成中…";
+                    out.textContent = "計算中...";
+                    summaryEl.textContent = "";
+                    const payload = Object.fromEntries(new FormData(form).entries());
+                    payload.screen_count = Number(payload.screen_count);
+
+                    const url = `${AGENT_BASE}/estimate`;
+                    console.log("[estimate] url:", url, "payload:", payload);
+
+                    try {
+                        const res = await fetch(url, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload),
+                        });
+                        console.log("[estimate] response status:", res.status);
+                        const bodyText = await res.text();
+                        let data = null;
+                        try {
+                            data = JSON.parse(bodyText);
+                        } catch (e) {
+                            console.error("[estimate] invalid JSON:", bodyText);
+                            statusEl.textContent = `Error ${res.status}: invalid JSON`;
+                            out.textContent = bodyText;
+                            return;
+                        }
+
+                        // Expected schema:
+                        // { status: "ok"|"error", estimated_amount: number, currency: "JPY", message: string|null }
+                        console.log("[estimate] response json:", data);
+
+                        if (!res.ok || data.status !== "ok") {
+                            // ビジネス向けの簡潔な文言のみ表示
+                            statusEl.textContent = "現在、概算を算出できません";
+                            summaryEl.textContent = ""; // 非表示扱い
+                            out.classList.remove("doc--8px"); // 失敗時は適用しない
+                            out.textContent = "";
+                            return;
+                        }
+
+                        statusEl.textContent = "見積もり生成が完了しました。";
+                        // 金額は円（整数）で表示し、通貨コードは出さない（JPY固定前提）
+                        const amountNum = Math.trunc(Number(data.estimated_amount));
+                        if (Number.isFinite(amountNum)) {
+                            const formatter = new Intl.NumberFormat("ja-JP");
+                            const amountStr = `¥${formatter.format(amountNum)}`;
+                            // 見出しと補足文を含めて表示
+                            summaryEl.innerHTML = `
                             <div class="l-stack-8">
                                 <div class="u-mb-8">概算見積</div>
                                 <div class="u-mb-8">${amountStr}</div>
                                 <div style="font-size: 0.875rem; color: #555;">※あくまで目安です</div>
                             </div>
                         `;
-                    } else {
-                        // 未算出は非表示
-                        summaryEl.textContent = "";
+                        } else {
+                            // 未算出は非表示
+                            summaryEl.textContent = "";
+                        }
+                        out.classList.add("doc--8px");
+                        out.innerHTML = data.message || ""; // HTML rationale
+
+                        // warnings/assumptions を表示
+                        const detailsEl = document.getElementById("details");
+                        const warningsEl = document.getElementById("warnings");
+                        const assumptionsEl = document.getElementById("assumptions");
+
+                        if (data.warnings && data.warnings.length > 0) {
+                            warningsEl.innerHTML = "<ul>" + data.warnings.map(w => `<li class="u-mb-8">${w}</li>`).join("") + "</ul>";
+                            detailsEl.style.display = "block";
+                        } else {
+                            warningsEl.textContent = "なし";
+                        }
+
+                        if (data.assumptions && data.assumptions.length > 0) {
+                            assumptionsEl.innerHTML = "<ul>" + data.assumptions.map(a => `<li class="u-mb-8">${a}</li>`).join("") + "</ul>";
+                            detailsEl.style.display = "block";
+                        } else {
+                            assumptionsEl.textContent = "なし";
+                        }
+
+                        // config_version をフッターに表示
+                        const footerEl = document.getElementById("footer");
+                        if (data.config_version) {
+                            footerEl.textContent = `Config Version: ${data.config_version}`;
+                        }
+                        // --- AI補正（参考）呼び出し ---
+                        const coreResult = { status: data.status, estimated_amount: data.estimated_amount, currency: data.currency };
+                        const ai = await callAIEnhance({
+                            project_name: payload.project_name,
+                            summary: payload.summary,
+                            scope: payload.scope,
+                            coreResult
+                        });
+                        renderAI(ai);
+
+                    } catch (err) {
+                        console.error("[estimate] error:", err);
+                        statusEl.textContent = `Fetch failed: ${err}`;
+                        out.textContent = "";
                     }
-                    out.classList.add("doc--8px");
-                    out.innerHTML = data.message || ""; // HTML rationale
-
-                    // warnings/assumptions を表示
-                    const detailsEl = document.getElementById("details");
-                    const warningsEl = document.getElementById("warnings");
-                    const assumptionsEl = document.getElementById("assumptions");
-
-                    if (data.warnings && data.warnings.length > 0) {
-                        warningsEl.innerHTML = "<ul>" + data.warnings.map(w => `<li class="u-mb-8">${w}</li>`).join("") + "</ul>";
-                        detailsEl.style.display = "block";
-                    } else {
-                        warningsEl.textContent = "なし";
-                    }
-
-                    if (data.assumptions && data.assumptions.length > 0) {
-                        assumptionsEl.innerHTML = "<ul>" + data.assumptions.map(a => `<li class="u-mb-8">${a}</li>`).join("") + "</ul>";
-                        detailsEl.style.display = "block";
-                    } else {
-                        assumptionsEl.textContent = "なし";
-                    }
-
-                    // config_version をフッターに表示
-                    const footerEl = document.getElementById("footer");
-                    if (data.config_version) {
-                        footerEl.textContent = `Config Version: ${data.config_version}`;
-                    }
-                    // --- AI補正（参考）呼び出し ---
-                    const coreResult = { status: data.status, estimated_amount: data.estimated_amount, currency: data.currency };
-                    const ai = await callAIEnhance({
-                        project_name: payload.project_name,
-                        summary: payload.summary,
-                        scope: payload.scope,
-                        coreResult
-                    });
-                    renderAI(ai);
-
-                } catch (err) {
-                    console.error("[estimate] error:", err);
-                    statusEl.textContent = `Fetch failed: ${err}`;
-                    out.textContent = "";
-                }
+                });
             });
-        });
-    </script>
+        </script>
+    </div>
 </body>
 
 </html>
