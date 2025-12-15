@@ -1,56 +1,56 @@
 /* ===== Utilities (8px grid) ===== */
 .u-mt-8 {
-    margin-top: 8px;
+  margin-top: 8px;
 }
 
 .u-mb-8 {
-    margin-bottom: 8px;
+  margin-bottom: 8px;
 }
 
 /* Additional spacing utilities */
 .u-mt-16 {
-    margin-top: 16px;
+  margin-top: 16px;
 }
 
 .u-mb-16 {
-    margin-bottom: 16px;
+  margin-bottom: 16px;
 }
 
 .u-pt-16 {
-    padding-top: 16px;
+  padding-top: 16px;
 }
 
 .u-gap-8 {
-    gap: 8px;
+  gap: 8px;
 }
 
 .u-gap-16 {
-    gap: 16px;
+  gap: 16px;
 }
 
 /* ===== Document base ===== */
 .doc--8px p {
-    margin: 0 0 8px;
-    line-height: 1.5;
+  margin: 0 0 8px;
+  line-height: 1.5;
 }
 
 .doc--8px h1,
 .doc--8px h2,
 .doc--8px h3 {
-    margin: 16px 0 8px;
+  margin: 16px 0 8px;
 }
 
 .doc--8px ul,
 .doc--8px ol {
-    margin: 0 0 8px;
-    padding-left: 24px;
+  margin: 0 0 8px;
+  padding-left: 24px;
 }
 
 /* ===== Layout containers ===== */
 .l-container-800 {
-    max-width: 800px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 24px;
-    box-sizing: border-box;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px;
+  box-sizing: border-box;
 }
