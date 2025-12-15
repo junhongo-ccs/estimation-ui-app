@@ -177,3 +177,87 @@ Azure Functions `/api/enhance_estimate` は
 ## CSS Utilities
 
 - Minimal 8px utilities and `.doc--8px` base rules live in [static/css/style.css](static/css/style.css).
+
+## 本番接続ガイド
+
+### 前提条件
+
+- UI は **静的ファイル**（HTML/JS/CSS）として配信
+- Azure Functions（estimate-api-cli）が本番で起動済み
+- HTTPS での配信（ブラウザ制限対策）
+
+### 1. GEMINI_API_KEY の管理
+
+**設定場所：** Azure Function App の Application Settings（一元管理）
+
+```bash
+RG="rg-jhongo0067-1948"
+APP="estimate-api-cli"
+
+# 現在の設定を確認
+az functionapp config appsettings list -g "$RG" -n "$APP" \
+  --query "[?name=='GEMINI_API_KEY'].name" -o tsv
+```
+
+**管理者：** Azure 権限を持つ運用者（GitHub Secrets は不要）
+
+**UI 側：** GEMINI_API_KEY を持たない（静的公開のため漏洩リスク）
+
+### 2. UI のデプロイ先（推奨）
+
+**方法：** Azure Storage Static Website
+
+1. ストレージアカウントの「静的Webサイト」を有効化
+2. `index.html` と `static/` をアップロード
+3. CDN または Application Gateway で HTTPS 化
+
+**代替案：**
+- Azure Static Web Apps（後で自動デプロイに移行可能）
+- GitHub Pages（社外公開が問題なければ）
+- 社内 Web サーバー（Nginx / Apache）
+
+### 3. DEBUG 設定
+
+**本番環境：** `window.DEBUG = false`（[index.html](index.html#L11)）
+
+- ユーザーには簡潔なエラーメッセージのみ
+- コンソール出力は最小化
+
+**PoC調査時：** `window.DEBUG = true`（一時的）
+
+- コンソールに詳細ログを出力
+- Network タブで API リクエスト/レスポンスを追跡可能
+
+### 4. 本番チェックリスト
+
+```
+□ GEMINI_API_KEY が Function App に設定されている
+□ Functions エンドポイント (https://estimate-api-cli.azurewebsites.net) が応答
+□ UI が HTTPS で配信されている（http NG）
+□ CORS が機能している（Functions の Access-Control-Allow-Origin）
+□ index.html の DEBUG = false に設定
+□ index.html の ENHANCE_BASE = 'https://estimate-api-cli.azurewebsites.net'
+□ ブラウザで UI にアクセスし、フォーム送信が完了
+□ Network タブで POST /api/enhance_estimate が 200 応答
+□ Application Insights で Functions のログが記録される
+```
+
+### 5. 疎通確認（CLI）
+
+```bash
+# Functions が生きているか確認
+curl -i -X POST "https://estimate-api-cli.azurewebsites.net/api/enhance_estimate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_name":"本番疎通",
+    "summary":"ping",
+    "scope":"test",
+    "core_result":{"estimated_amount":500000,"currency":"JPY"}
+  }'
+```
+
+**期待される応答:** `HTTP 200 OK`
+
+**502 Bad Gateway の場合：** GEMINI_API_KEY が未設定
+
+

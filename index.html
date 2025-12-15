@@ -1,171 +1,169 @@
 <!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>見積UI</title>
-    <link rel="stylesheet" href="static/css/style.css" />
-    <script>
-      // Azure Functions (estimate-agent-backend)
-      window.ENHANCE_BASE = 'https://estimate-api-cli.azurewebsites.net';
-      window.DEBUG = true; // PoC時のみ
-    </script>
-  </head>
 
-  <body>
-    <div class="l-container-800">
-      <h1 class="u-mb-16">AI見積UI</h1>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>見積UI</title>
+  <link rel="stylesheet" href="static/css/style.css" />
+  <script>
+    // Azure Functions (estimate-agent-backend)
+    window.ENHANCE_BASE = 'https://estimate-api-cli.azurewebsites.net';
+    window.DEBUG = false; // 本番は false、PoC調査時は true
+  </script>
+</head>
 
-      <form id="f" class="u-mt-8">
-        <div>
-          <label>案件名</label><br />
-          <input name="project_name" value="テスト案件" required />
-        </div>
-        <div>
-          <label>要約</label><br />
-          <input name="summary" value="UI改善" required />
-        </div>
-        <div>
-          <label>範囲</label><br />
-          <input name="scope" value="要件〜実装" required />
-        </div>
-        <div>
-          <label>画面数</label><br />
-          <input name="screen_count" type="number" value="12" min="1" required />
-        </div>
-        <div>
-          <label>難易度</label><br />
-          <select name="complexity">
-            <option>low</option>
-            <option selected>medium</option>
-            <option>high</option>
-          </select>
-        </div>
+<body>
+  <div class="l-container-800">
+    <h1 class="u-mb-16">AI見積UI</h1>
 
-        <button type="submit" class="u-mt-16">見積る</button>
-      </form>
-
-      <hr />
-      <div id="status" class="u-mb-8"></div>
-      <div id="summary" class="u-mb-16"></div>
-      <!-- AI補正（参考） -->
-      <details id="ai-adjustment" class="u-mt-8" hidden>
-        <summary>AI補正案（参考・自動生成）</summary>
-        <div class="doc--8px u-mt-8">
-          <p><strong>補正後目安：</strong><span id="ai-adjusted"></span></p>
-          <ul id="ai-reasons"></ul>
-          <p class="u-mt-8"><small>※参考情報（最終判断は担当者）</small></p>
-        </div>
-      </details>
-      <div id="out" class="doc--8px u-mt-8"></div>
-
-      <div id="details" class="u-mt-16" style="display: none">
-        <details class="u-mb-8">
-          <summary style="cursor: pointer; font-weight: bold; padding: 8px 0">
-            ⚠️ 注意事項 (Warnings)
-          </summary>
-          <div id="warnings" class="u-mt-8" style="padding-left: 16px; color: #666"></div>
-        </details>
-        <details class="u-mb-8">
-          <summary style="cursor: pointer; font-weight: bold; padding: 8px 0">
-            📋 前提条件 (Assumptions)
-          </summary>
-          <div id="assumptions" class="u-mt-8" style="padding-left: 16px; color: #666"></div>
-        </details>
+    <form id="f" class="u-mt-8">
+      <div>
+        <label>案件名</label><br />
+        <input name="project_name" value="テスト案件" required />
+      </div>
+      <div>
+        <label>要約</label><br />
+        <input name="summary" value="UI改善" required />
+      </div>
+      <div>
+        <label>範囲</label><br />
+        <input name="scope" value="要件〜実装" required />
+      </div>
+      <div>
+        <label>画面数</label><br />
+        <input name="screen_count" type="number" value="12" min="1" required />
+      </div>
+      <div>
+        <label>難易度</label><br />
+        <select name="complexity">
+          <option>low</option>
+          <option selected>medium</option>
+          <option>high</option>
+        </select>
       </div>
 
-      <footer
-        id="footer"
-        class="u-mt-16"
-        style="padding-top: 16px; border-top: 1px solid #ddd; color: #888; font-size: 0.875rem"
-      ></footer>
+      <button type="submit" class="u-mt-16">見積る</button>
+    </form>
 
-      <script>
-        document.addEventListener('DOMContentLoaded', () => {
-          const form = document.getElementById('f');
-          const out = document.getElementById('out');
-          const statusEl = document.getElementById('status');
-          const summaryEl = document.getElementById('summary');
+    <hr />
+    <div id="status" class="u-mb-8"></div>
+    <div id="summary" class="u-mb-16"></div>
+    <!-- AI補正（参考） -->
+    <details id="ai-adjustment" class="u-mt-8" hidden>
+      <summary>AI補正案（参考・自動生成）</summary>
+      <div class="doc--8px u-mt-8">
+        <p><strong>補正後目安：</strong><span id="ai-adjusted"></span></p>
+        <ul id="ai-reasons"></ul>
+        <p class="u-mt-8"><small>※参考情報（最終判断は担当者）</small></p>
+      </div>
+    </details>
+    <div id="out" class="doc--8px u-mt-8"></div>
 
-          // Single-source override: set window.AGENT_BASE via inline script when needed.
-          // Auto-detect Codespace environment; fallback to localhost
-          const AGENT_BASE =
-            window.AGENT_BASE ??
-            (() => {
-              const hostname = window.location.hostname;
+    <div id="details" class="u-mt-16" style="display: none">
+      <details class="u-mb-8">
+        <summary style="cursor: pointer; font-weight: bold; padding: 8px 0">
+          ⚠️ 注意事項 (Warnings)
+        </summary>
+        <div id="warnings" class="u-mt-8" style="padding-left: 16px; color: #666"></div>
+      </details>
+      <details class="u-mb-8">
+        <summary style="cursor: pointer; font-weight: bold; padding: 8px 0">
+          📋 前提条件 (Assumptions)
+        </summary>
+        <div id="assumptions" class="u-mt-8" style="padding-left: 16px; color: #666"></div>
+      </details>
+    </div>
 
-              // Codespaces（HTTPS必須）
-              if (hostname.includes('github.dev')) {
-                return `https://${hostname.replace('-8002', '-8001')}`;
-              }
+    <footer id="footer" class="u-mt-16"
+      style="padding-top: 16px; border-top: 1px solid #ddd; color: #888; font-size: 0.875rem"></footer>
 
-              // ローカル環境
-              return 'http://127.0.0.1:8001';
-            })();
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('f');
+        const out = document.getElementById('out');
+        const statusEl = document.getElementById('status');
+        const summaryEl = document.getElementById('summary');
 
-          // Azure Functions（AI補正）のベースURL
-          // window.ENHANCE_BASE で上書き可能（本番: https://estimate-api-cli.azurewebsites.net）
-          const ENHANCE_BASE =
-            window.ENHANCE_BASE ??
-            (() => {
-              const h = location.hostname;
-              if (h.includes('github.dev')) return `https://${h.replace('-8002', '-7071')}`;
-              return 'http://127.0.0.1:7071';
-            })();
+        // Single-source override: set window.AGENT_BASE via inline script when needed.
+        // Auto-detect Codespace environment; fallback to localhost
+        const AGENT_BASE =
+          window.AGENT_BASE ??
+          (() => {
+            const hostname = window.location.hostname;
 
-          // ヘルパー関数
-          const DEBUG = !!window.DEBUG;
-
-          function logErr(...args) {
-            if (DEBUG) console.error(...args);
-            else console.warn(...args);
-          }
-
-          function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-          }
-
-          function formatJPY(amount) {
-            const num = Math.trunc(Number(amount));
-            if (!Number.isFinite(num)) return '-';
-            return new Intl.NumberFormat('ja-JP').format(num);
-          }
-
-          async function callAIEnhance({ project_name, summary, scope, coreResult }) {
-            const url = `${ENHANCE_BASE}/api/enhance_estimate`;
-            try {
-              const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ project_name, summary, scope, core_result: coreResult }),
-              });
-              const bodyText = await res.text();
-              if (!res.ok) {
-                logErr('[enhance_estimate] failed', { status: res.status, url, body: bodyText });
-                throw new Error(`enhance_estimate failed: ${res.status}`);
-              }
-              return JSON.parse(bodyText);
-            } catch (err) {
-              logErr('[enhance_estimate] error', { url, error: err.message });
-              throw err;
-            }
-          }
-
-          function renderAIHtml(ai) {
-            if (!ai || ai.status !== 'ok') {
-              return '';
+            // Codespaces（HTTPS必須）
+            if (hostname.includes('github.dev')) {
+              return `https://${hostname.replace('-8002', '-8001')}`;
             }
 
-            const adjusted = ai.adjustment && ai.adjustment.adjusted_amount;
-            const adjustedStr = typeof adjusted === 'number' ? `¥${formatJPY(adjusted)}` : '-';
+            // ローカル環境
+            return 'http://127.0.0.1:8001';
+          })();
 
-            const reasons = (ai.adjustment?.reasons || [])
-              .map((r) => `<li>${escapeHtml(r)}</li>`)
-              .join('');
+        // Azure Functions（AI補正）のベースURL
+        // window.ENHANCE_BASE で上書き可能（本番: https://estimate-api-cli.azurewebsites.net）
+        const ENHANCE_BASE =
+          window.ENHANCE_BASE ??
+          (() => {
+            const h = location.hostname;
+            if (h.includes('github.dev')) return `https://${h.replace('-8002', '-7071')}`;
+            return 'http://127.0.0.1:7071';
+          })();
 
-            return `
+        // ヘルパー関数
+        const DEBUG = !!window.DEBUG;
+
+        function logErr(...args) {
+          if (DEBUG) console.error(...args);
+          else console.warn(...args);
+        }
+
+        function escapeHtml(text) {
+          const div = document.createElement('div');
+          div.textContent = text;
+          return div.innerHTML;
+        }
+
+        function formatJPY(amount) {
+          const num = Math.trunc(Number(amount));
+          if (!Number.isFinite(num)) return '-';
+          return new Intl.NumberFormat('ja-JP').format(num);
+        }
+
+        async function callAIEnhance({ project_name, summary, scope, coreResult }) {
+          const url = `${ENHANCE_BASE}/api/enhance_estimate`;
+          try {
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ project_name, summary, scope, core_result: coreResult }),
+            });
+            const bodyText = await res.text();
+            if (!res.ok) {
+              logErr('[enhance_estimate] failed', { status: res.status, url, body: bodyText });
+              throw new Error(`enhance_estimate failed: ${res.status}`);
+            }
+            return JSON.parse(bodyText);
+          } catch (err) {
+            logErr('[enhance_estimate] error', { url, error: err.message });
+            throw err;
+          }
+        }
+
+        function renderAIHtml(ai) {
+          if (!ai || ai.status !== 'ok') {
+            return '';
+          }
+
+          const adjusted = ai.adjustment && ai.adjustment.adjusted_amount;
+          const adjustedStr = typeof adjusted === 'number' ? `¥${formatJPY(adjusted)}` : '-';
+
+          const reasons = (ai.adjustment?.reasons || [])
+            .map((r) => `<li>${escapeHtml(r)}</li>`)
+            .join('');
+
+          return `
                         <details open>
                             <summary>AI補正案（参考・自動生成）</summary>
                             <div class="doc--8px u-mt-8">
@@ -175,143 +173,144 @@
                             </div>
                         </details>
                     `;
+        }
+
+        function setAIState(state, html = '') {
+          const box = document.getElementById('ai-adjustment');
+          if (!box) return;
+          box.hidden = false;
+
+          if (state === 'loading') {
+            box.innerHTML = "<div class='u-mt-8'>AI補正を取得中…</div>";
+          } else if (state === 'ok') {
+            box.innerHTML = html;
+          } else if (state === 'fail') {
+            box.innerHTML = `<div class='u-mt-8'>AI補正の取得に失敗しました（概算見積は表示できます）</div>${html ? `<div class="u-mt-8"><small style="color: #888;">${escapeHtml(html)}</small></div>` : ''}`;
           }
+        }
 
-          function setAIState(state, html = '') {
-            const box = document.getElementById('ai-adjustment');
-            if (!box) return;
-            box.hidden = false;
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
 
-            if (state === 'loading') {
-              box.innerHTML = "<div class='u-mt-8'>AI補正を取得中…</div>";
-            } else if (state === 'ok') {
-              box.innerHTML = html;
-            } else if (state === 'fail') {
-              box.innerHTML = `<div class='u-mt-8'>AI補正の取得に失敗しました（概算見積は表示できます）</div>${html ? `<div class="u-mt-8"><small style="color: #888;">${escapeHtml(html)}</small></div>` : ''}`;
-            }
-          }
+          statusEl.textContent = '入力を送信しました。見積もり生成中…';
+          out.textContent = '計算中...';
+          summaryEl.textContent = '';
+          const payload = Object.fromEntries(new FormData(form).entries());
+          payload.screen_count = Number(payload.screen_count);
 
-          form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+          const url = `${AGENT_BASE}/estimate`;
+          console.log('[estimate] url:', url, 'payload:', payload);
 
-            statusEl.textContent = '入力を送信しました。見積もり生成中…';
-            out.textContent = '計算中...';
-            summaryEl.textContent = '';
-            const payload = Object.fromEntries(new FormData(form).entries());
-            payload.screen_count = Number(payload.screen_count);
-
-            const url = `${AGENT_BASE}/estimate`;
-            console.log('[estimate] url:', url, 'payload:', payload);
-
+          try {
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            console.log('[estimate] response status:', res.status);
+            const bodyText = await res.text();
+            let data = null;
             try {
-              const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-              });
-              console.log('[estimate] response status:', res.status);
-              const bodyText = await res.text();
-              let data = null;
-              try {
-                data = JSON.parse(bodyText);
-              } catch (e) {
-                console.error('[estimate] invalid JSON:', bodyText);
-                statusEl.textContent = `Error ${res.status}: invalid JSON`;
-                out.textContent = bodyText;
-                return;
-              }
+              data = JSON.parse(bodyText);
+            } catch (e) {
+              console.error('[estimate] invalid JSON:', bodyText);
+              statusEl.textContent = `Error ${res.status}: invalid JSON`;
+              out.textContent = bodyText;
+              return;
+            }
 
-              // Expected schema:
-              // { status: "ok"|"error", estimated_amount: number, currency: "JPY", message: string|null }
-              console.log('[estimate] response json:', data);
+            // Expected schema:
+            // { status: "ok"|"error", estimated_amount: number, currency: "JPY", message: string|null }
+            console.log('[estimate] response json:', data);
 
-              if (!res.ok || data.status !== 'ok') {
-                // ビジネス向けの簡潔な文言のみ表示
-                statusEl.textContent = '現在、概算を算出できません';
-                summaryEl.textContent = ''; // 非表示扱い
-                out.classList.remove('doc--8px'); // 失敗時は適用しない
-                out.textContent = '';
-                return;
-              }
+            if (!res.ok || data.status !== 'ok') {
+              // ビジネス向けの簡潔な文言のみ表示
+              statusEl.textContent = '現在、概算を算出できません';
+              summaryEl.textContent = ''; // 非表示扱い
+              out.classList.remove('doc--8px'); // 失敗時は適用しない
+              out.textContent = '';
+              return;
+            }
 
-              statusEl.textContent = '見積もり生成が完了しました。';
-              // 金額は円（整数）で表示し、通貨コードは出さない（JPY固定前提）
-              const amountNum = Math.trunc(Number(data.estimated_amount));
-              if (Number.isFinite(amountNum)) {
-                const formatter = new Intl.NumberFormat('ja-JP');
-                const amountStr = `¥${formatter.format(amountNum)}`;
-                // 見出しと補足文を含めて表示
-                summaryEl.innerHTML = `
+            statusEl.textContent = '見積もり生成が完了しました。';
+            // 金額は円（整数）で表示し、通貨コードは出さない（JPY固定前提）
+            const amountNum = Math.trunc(Number(data.estimated_amount));
+            if (Number.isFinite(amountNum)) {
+              const formatter = new Intl.NumberFormat('ja-JP');
+              const amountStr = `¥${formatter.format(amountNum)}`;
+              // 見出しと補足文を含めて表示
+              summaryEl.innerHTML = `
                             <div class="l-stack-8">
                                 <div class="u-mb-8">概算見積</div>
                                 <div class="u-mb-8">${amountStr}</div>
                                 <div style="font-size: 0.875rem; color: #555;">※あくまで目安です</div>
                             </div>
                         `;
-              } else {
-                // 未算出は非表示
-                summaryEl.textContent = '';
-              }
-              out.classList.add('doc--8px');
-              out.innerHTML = data.message || ''; // HTML rationale
-
-              // warnings/assumptions を表示
-              const detailsEl = document.getElementById('details');
-              const warningsEl = document.getElementById('warnings');
-              const assumptionsEl = document.getElementById('assumptions');
-
-              if (data.warnings && data.warnings.length > 0) {
-                warningsEl.innerHTML =
-                  '<ul>' +
-                  data.warnings.map((w) => `<li class="u-mb-8">${w}</li>`).join('') +
-                  '</ul>';
-                detailsEl.style.display = 'block';
-              } else {
-                warningsEl.textContent = 'なし';
-              }
-
-              if (data.assumptions && data.assumptions.length > 0) {
-                assumptionsEl.innerHTML =
-                  '<ul>' +
-                  data.assumptions.map((a) => `<li class="u-mb-8">${a}</li>`).join('') +
-                  '</ul>';
-                detailsEl.style.display = 'block';
-              } else {
-                assumptionsEl.textContent = 'なし';
-              }
-
-              // config_version をフッターに表示
-              const footerEl = document.getElementById('footer');
-              if (data.config_version) {
-                footerEl.textContent = `Config Version: ${data.config_version}`;
-              }
-              // --- AI補正（参考）呼び出し ---
-              setAIState('loading');
-              try {
-                const coreResult = {
-                  status: data.status,
-                  estimated_amount: data.estimated_amount,
-                  currency: data.currency,
-                };
-                const ai = await callAIEnhance({
-                  project_name: payload.project_name,
-                  summary: payload.summary,
-                  scope: payload.scope,
-                  coreResult,
-                });
-                setAIState('ok', renderAIHtml(ai));
-              } catch (err) {
-                logErr('[enhance_estimate] AI補正の取得に失敗', err);
-                setAIState('fail', String(err?.message || err));
-              }
-            } catch (err) {
-              console.error('[estimate] error:', err);
-              statusEl.textContent = `Fetch failed: ${err}`;
-              out.textContent = '';
+            } else {
+              // 未算出は非表示
+              summaryEl.textContent = '';
             }
-          });
+            out.classList.add('doc--8px');
+            out.innerHTML = data.message || ''; // HTML rationale
+
+            // warnings/assumptions を表示
+            const detailsEl = document.getElementById('details');
+            const warningsEl = document.getElementById('warnings');
+            const assumptionsEl = document.getElementById('assumptions');
+
+            if (data.warnings && data.warnings.length > 0) {
+              warningsEl.innerHTML =
+                '<ul>' +
+                data.warnings.map((w) => `<li class="u-mb-8">${w}</li>`).join('') +
+                '</ul>';
+              detailsEl.style.display = 'block';
+            } else {
+              warningsEl.textContent = 'なし';
+            }
+
+            if (data.assumptions && data.assumptions.length > 0) {
+              assumptionsEl.innerHTML =
+                '<ul>' +
+                data.assumptions.map((a) => `<li class="u-mb-8">${a}</li>`).join('') +
+                '</ul>';
+              detailsEl.style.display = 'block';
+            } else {
+              assumptionsEl.textContent = 'なし';
+            }
+
+            // config_version をフッターに表示
+            const footerEl = document.getElementById('footer');
+            if (data.config_version) {
+              footerEl.textContent = `Config Version: ${data.config_version}`;
+            }
+            // --- AI補正（参考）呼び出し ---
+            setAIState('loading');
+            try {
+              const coreResult = {
+                status: data.status,
+                estimated_amount: data.estimated_amount,
+                currency: data.currency,
+              };
+              const ai = await callAIEnhance({
+                project_name: payload.project_name,
+                summary: payload.summary,
+                scope: payload.scope,
+                coreResult,
+              });
+              setAIState('ok', renderAIHtml(ai));
+            } catch (err) {
+              logErr('[enhance_estimate] AI補正の取得に失敗', err);
+              setAIState('fail', String(err?.message || err));
+            }
+          } catch (err) {
+            console.error('[estimate] error:', err);
+            statusEl.textContent = `Fetch failed: ${err}`;
+            out.textContent = '';
+          }
         });
-      </script>
-    </div>
-  </body>
+      });
+    </script>
+  </div>
+</body>
+
 </html>
