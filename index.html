@@ -6,11 +6,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>見積UI</title>
   <link rel="stylesheet" href="static/css/style.css" />
-  <script>
-    // Azure Functions (estimate-agent-backend)
-    window.ENHANCE_BASE = 'https://estimate-api-cli.azurewebsites.net';
-    window.DEBUG = false; // 本番は false、PoC調査時は true
-  </script>
 </head>
 
 <body>
@@ -49,15 +44,6 @@
     <hr />
     <div id="status" class="u-mb-8"></div>
     <div id="summary" class="u-mb-16"></div>
-    <!-- AI補正（参考） -->
-    <details id="ai-adjustment" class="u-mt-8" hidden>
-      <summary>AI補正案（参考・自動生成）</summary>
-      <div class="doc--8px u-mt-8">
-        <p><strong>補正後目安：</strong><span id="ai-adjusted"></span></p>
-        <ul id="ai-reasons"></ul>
-        <p class="u-mt-8"><small>※参考情報（最終判断は担当者）</small></p>
-      </div>
-    </details>
     <div id="out" class="doc--8px u-mt-8"></div>
 
     <div id="details" class="u-mt-16" style="display: none">
@@ -101,92 +87,11 @@
             return 'http://127.0.0.1:8001';
           })();
 
-        // Azure Functions（AI補正）のベースURL
-        // window.ENHANCE_BASE で上書き可能（本番: https://estimate-api-cli.azurewebsites.net）
-        const ENHANCE_BASE =
-          window.ENHANCE_BASE ??
-          (() => {
-            const h = location.hostname;
-            if (h.includes('github.dev')) return `https://${h.replace('-8002', '-7071')}`;
-            return 'http://127.0.0.1:7071';
-          })();
-
         // ヘルパー関数
-        const DEBUG = !!window.DEBUG;
-
-        function logErr(...args) {
-          if (DEBUG) console.error(...args);
-          else console.warn(...args);
-        }
-
-        function escapeHtml(text) {
-          const div = document.createElement('div');
-          div.textContent = text;
-          return div.innerHTML;
-        }
-
         function formatJPY(amount) {
           const num = Math.trunc(Number(amount));
           if (!Number.isFinite(num)) return '-';
           return new Intl.NumberFormat('ja-JP').format(num);
-        }
-
-        async function callAIEnhance({ project_name, summary, scope, coreResult }) {
-          const url = `${ENHANCE_BASE}/api/enhance_estimate`;
-          try {
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ project_name, summary, scope, core_result: coreResult }),
-            });
-            const bodyText = await res.text();
-            if (!res.ok) {
-              logErr('[enhance_estimate] failed', { status: res.status, url, body: bodyText });
-              throw new Error(`enhance_estimate failed: ${res.status}`);
-            }
-            return JSON.parse(bodyText);
-          } catch (err) {
-            logErr('[enhance_estimate] error', { url, error: err.message });
-            throw err;
-          }
-        }
-
-        function renderAIHtml(ai) {
-          if (!ai || ai.status !== 'ok') {
-            return '';
-          }
-
-          const adjusted = ai.adjustment && ai.adjustment.adjusted_amount;
-          const adjustedStr = typeof adjusted === 'number' ? `¥${formatJPY(adjusted)}` : '-';
-
-          const reasons = (ai.adjustment?.reasons || [])
-            .map((r) => `<li>${escapeHtml(r)}</li>`)
-            .join('');
-
-          return `
-                        <details open>
-                            <summary>AI補正案（参考・自動生成）</summary>
-                            <div class="doc--8px u-mt-8">
-                                <p><strong>補正後目安：</strong><span>${adjustedStr}</span></p>
-                                ${reasons ? `<ul>${reasons}</ul>` : ''}
-                                <p class="u-mt-8"><small>※参考情報（最終判断は担当者）</small></p>
-                            </div>
-                        </details>
-                    `;
-        }
-
-        function setAIState(state, html = '') {
-          const box = document.getElementById('ai-adjustment');
-          if (!box) return;
-          box.hidden = false;
-
-          if (state === 'loading') {
-            box.innerHTML = "<div class='u-mt-8'>AI補正を取得中…</div>";
-          } else if (state === 'ok') {
-            box.innerHTML = html;
-          } else if (state === 'fail') {
-            box.innerHTML = `<div class='u-mt-8'>AI補正の取得に失敗しました（概算見積は表示できます）</div>${html ? `<div class="u-mt-8"><small style="color: #888;">${escapeHtml(html)}</small></div>` : ''}`;
-          }
         }
 
         form.addEventListener('submit', async (e) => {
@@ -282,25 +187,6 @@
             const footerEl = document.getElementById('footer');
             if (data.config_version) {
               footerEl.textContent = `Config Version: ${data.config_version}`;
-            }
-            // --- AI補正（参考）呼び出し ---
-            setAIState('loading');
-            try {
-              const coreResult = {
-                status: data.status,
-                estimated_amount: data.estimated_amount,
-                currency: data.currency,
-              };
-              const ai = await callAIEnhance({
-                project_name: payload.project_name,
-                summary: payload.summary,
-                scope: payload.scope,
-                coreResult,
-              });
-              setAIState('ok', renderAIHtml(ai));
-            } catch (err) {
-              logErr('[enhance_estimate] AI補正の取得に失敗', err);
-              setAIState('fail', String(err?.message || err));
             }
           } catch (err) {
             console.error('[estimate] error:', err);
