@@ -1,202 +1,111 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>見積UI</title>
-  <link rel="stylesheet" href="static/css/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI見積もりシステム</title>
+  <link rel="stylesheet" href="styles/design-system.css">
+  <link rel="stylesheet" href="styles/app.css">
 </head>
 
 <body>
-  <div class="l-container-800">
-    <h1 class="u-mb-16">AI見積UI</h1>
+  <div class="container">
+    <header class="header">
+      <h1>AI見積もりシステム</h1>
+      <p class="subtitle">開発コストとデザインフェーズをサポート</p>
+    </header>
 
-    <form id="f" class="u-mt-8">
-      <div>
-        <label>案件名</label><br />
-        <input name="project_name" value="テスト案件" required />
-      </div>
-      <div>
-        <label>要約</label><br />
-        <input name="summary" value="UI改善" required />
-      </div>
-      <div>
-        <label>範囲</label><br />
-        <input name="scope" value="要件〜実装" required />
-      </div>
-      <div>
-        <label>画面数</label><br />
-        <input name="screen_count" type="number" value="12" min="1" required />
-      </div>
-      <div>
-        <label>難易度</label><br />
-        <select name="complexity">
-          <option>low</option>
-          <option selected>medium</option>
-          <option>high</option>
-        </select>
+    <main class="main">
+      <div class="tabs">
+        <button class="tab active" data-tab="estimate">開発見積もり</button>
+        <button class="tab" data-tab="design">デザイン相談</button>
       </div>
 
-      <button type="submit" class="u-mt-16">見積る</button>
-    </form>
+      <!-- 開発見積もりフォーム -->
+      <div class="tab-content active" id="estimate-tab">
+        <form class="form" id="estimate-form">
+          <div class="form-group">
+            <label for="project-type">プロジェクトタイプ</label>
+            <select id="project-type" name="project_type" required>
+              <option value="">選択してください</option>
+              <option value="web_app">Webアプリケーション</option>
+              <option value="mobile_app">モバイルアプリ</option>
+              <option value="both">Web + モバイル</option>
+            </select>
+          </div>
 
-    <hr />
-    <div id="status" class="u-mb-8"></div>
-    <div id="summary" class="u-mb-16"></div>
-    <div id="out" class="doc--8px u-mt-8"></div>
+          <div class="form-group">
+            <label for="duration">開発期間（月）</label>
+            <input type="number" id="duration" name="duration_months" min="1" max="24" value="6" required>
+          </div>
 
-    <div id="details" class="u-mt-16" style="display: none">
-      <details class="u-mb-8">
-        <summary style="cursor: pointer; font-weight: bold; padding: 8px 0">
-          ⚠️ 注意事項 (Warnings)
-        </summary>
-        <div id="warnings" class="u-mt-8" style="padding-left: 16px; color: #666"></div>
-      </details>
-      <details class="u-mb-8">
-        <summary style="cursor: pointer; font-weight: bold; padding: 8px 0">
-          📋 前提条件 (Assumptions)
-        </summary>
-        <div id="assumptions" class="u-mt-8" style="padding-left: 16px; color: #666"></div>
-      </details>
-    </div>
+          <div class="form-group">
+            <label for="team-size">チームサイズ</label>
+            <input type="number" id="team-size" name="team_size" min="1" max="20" value="3" required>
+          </div>
 
-    <footer id="footer" class="u-mt-16"
-      style="padding-top: 16px; border-top: 1px solid #ddd; color: #888; font-size: 0.875rem"></footer>
+          <button type="submit" class="btn btn-primary">見積もりを取得</button>
+        </form>
+      </div>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById('f');
-        const out = document.getElementById('out');
-        const statusEl = document.getElementById('status');
-        const summaryEl = document.getElementById('summary');
+      <!-- デザイン相談フォーム -->
+      <div class="tab-content" id="design-tab">
+        <form class="form" id="design-form">
+          <div class="form-group">
+            <label>現在の状況</label>
+            <div class="checkbox-group">
+              <label class="checkbox">
+                <input type="checkbox" name="wireframe_ready">
+                <span>ワイヤーフレーム作成済み</span>
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" name="design_company_selected">
+                <span>デザイン会社選定済み</span>
+              </label>
+            </div>
+          </div>
 
-        // Single-source override: set window.AGENT_BASE via inline script when needed.
-        // Auto-detect Codespace environment; fallback to localhost
-        const AGENT_BASE =
-          window.AGENT_BASE ??
-          (() => {
-            const hostname = window.location.hostname;
+          <div class="form-group">
+            <label for="figma-experience">Figma経験</label>
+            <select id="figma-experience" name="figma_experience">
+              <option value="none">なし</option>
+              <option value="basic">少しある</option>
+              <option value="advanced">詳しい</option>
+            </select>
+          </div>
 
-            // Codespaces（HTTPS必須）
-            if (hostname.includes('github.dev')) {
-              return `https://${hostname.replace('-8002', '-8001')}`;
-            }
+          <div class="form-group">
+            <label for="screen-count">画面数</label>
+            <input type="number" id="screen-count" name="screen_count" min="1" value="10">
+          </div>
 
-            // ローカル環境
-            return 'http://127.0.0.1:8001';
-          })();
+          <div class="form-group">
+            <label class="checkbox">
+              <input type="checkbox" name="responsive_required" checked>
+              <span>レスポンシブ対応必要</span>
+            </label>
+          </div>
 
-        // ヘルパー関数
-        function formatJPY(amount) {
-          const num = Math.trunc(Number(amount));
-          if (!Number.isFinite(num)) return '-';
-          return new Intl.NumberFormat('ja-JP').format(num);
-        }
+          <button type="submit" class="btn btn-primary">相談する</button>
+        </form>
+      </div>
 
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
+      <!-- 結果表示エリア -->
+      <div class="result" id="result" style="display: none;">
+        <h2>回答</h2>
+        <div class="result-content" id="result-content"></div>
+      </div>
 
-          statusEl.textContent = '入力を送信しました。見積もり生成中…';
-          out.textContent = '計算中...';
-          summaryEl.textContent = '';
-          const payload = Object.fromEntries(new FormData(form).entries());
-          payload.screen_count = Number(payload.screen_count);
-
-          const url = `${AGENT_BASE}/estimate`;
-          console.log('[estimate] url:', url, 'payload:', payload);
-
-          try {
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-            });
-            console.log('[estimate] response status:', res.status);
-            const bodyText = await res.text();
-            let data = null;
-            try {
-              data = JSON.parse(bodyText);
-            } catch (e) {
-              console.error('[estimate] invalid JSON:', bodyText);
-              statusEl.textContent = `Error ${res.status}: invalid JSON`;
-              out.textContent = bodyText;
-              return;
-            }
-
-            // Expected schema:
-            // { status: "ok"|"error", estimated_amount: number, currency: "JPY", message: string|null }
-            console.log('[estimate] response json:', data);
-
-            if (!res.ok || data.status !== 'ok') {
-              // ビジネス向けの簡潔な文言のみ表示
-              statusEl.textContent = '現在、概算を算出できません';
-              summaryEl.textContent = ''; // 非表示扱い
-              out.classList.remove('doc--8px'); // 失敗時は適用しない
-              out.textContent = '';
-              return;
-            }
-
-            statusEl.textContent = '見積もり生成が完了しました。';
-            // 金額は円（整数）で表示し、通貨コードは出さない（JPY固定前提）
-            const amountNum = Math.trunc(Number(data.estimated_amount));
-            if (Number.isFinite(amountNum)) {
-              const formatter = new Intl.NumberFormat('ja-JP');
-              const amountStr = `¥${formatter.format(amountNum)}`;
-              // 見出しと補足文を含めて表示
-              summaryEl.innerHTML = `
-                            <div class="l-stack-8">
-                                <div class="u-mb-8">概算見積</div>
-                                <div class="u-mb-8">${amountStr}</div>
-                                <div style="font-size: 0.875rem; color: #555;">※あくまで目安です</div>
-                            </div>
-                        `;
-            } else {
-              // 未算出は非表示
-              summaryEl.textContent = '';
-            }
-            out.classList.add('doc--8px');
-            out.innerHTML = data.message || ''; // HTML rationale
-
-            // warnings/assumptions を表示
-            const detailsEl = document.getElementById('details');
-            const warningsEl = document.getElementById('warnings');
-            const assumptionsEl = document.getElementById('assumptions');
-
-            if (data.warnings && data.warnings.length > 0) {
-              warningsEl.innerHTML =
-                '<ul>' +
-                data.warnings.map((w) => `<li class="u-mb-8">${w}</li>`).join('') +
-                '</ul>';
-              detailsEl.style.display = 'block';
-            } else {
-              warningsEl.textContent = 'なし';
-            }
-
-            if (data.assumptions && data.assumptions.length > 0) {
-              assumptionsEl.innerHTML =
-                '<ul>' +
-                data.assumptions.map((a) => `<li class="u-mb-8">${a}</li>`).join('') +
-                '</ul>';
-              detailsEl.style.display = 'block';
-            } else {
-              assumptionsEl.textContent = 'なし';
-            }
-
-            // config_version をフッターに表示
-            const footerEl = document.getElementById('footer');
-            if (data.config_version) {
-              footerEl.textContent = `Config Version: ${data.config_version}`;
-            }
-          } catch (err) {
-            console.error('[estimate] error:', err);
-            statusEl.textContent = `Fetch failed: ${err}`;
-            out.textContent = '';
-          }
-        });
-      });
-    </script>
+      <!-- ローディング -->
+      <div class="loading" id="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p>AI が回答を生成中...</p>
+      </div>
+    </main>
   </div>
+
+  <script src="app.js"></script>
 </body>
 
 </html>
