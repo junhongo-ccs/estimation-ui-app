@@ -2,26 +2,25 @@
 // Configuration
 // ============================================
 
-const API_ENDPOINT = 'https://estimation-agent-endpoint.eastus2.inference.ml.azure.com/score';
-const API_KEY = 'YOUR_API_KEY_HERE'; // TODO: Replace with actual API key
+const API_ENDPOINT = 'https://estimation-agent-app.blueplant-e852c27d.eastus2.azurecontainerapps.io/score';
 
 // ============================================
 // Tab Switching
 // ============================================
 
 document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        // Remove active class from all tabs and contents
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  tab.addEventListener('click', () => {
+    // Remove active class from all tabs and contents
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-        // Add active class to clicked tab
-        tab.classList.add('active');
+    // Add active class to clicked tab
+    tab.classList.add('active');
 
-        // Show corresponding content
-        const tabName = tab.dataset.tab;
-        document.getElementById(`${tabName}-tab`).classList.add('active');
-    });
+    // Show corresponding content
+    const tabName = tab.dataset.tab;
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+  });
 });
 
 // ============================================
@@ -29,17 +28,17 @@ document.querySelectorAll('.tab').forEach(tab => {
 // ============================================
 
 document.getElementById('estimate-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const formData = new FormData(e.target);
-    const data = {
-        project_type: formData.get('project_type'),
-        duration_months: parseInt(formData.get('duration_months')),
-        team_size: parseInt(formData.get('team_size')),
-        inquiry_type: 'development_estimate'
-    };
+  const formData = new FormData(e.target);
+  const data = {
+    project_type: formData.get('project_type'),
+    duration_months: parseInt(formData.get('duration_months')),
+    team_size: parseInt(formData.get('team_size')),
+    inquiry_type: 'development_estimate'
+  };
 
-    await submitToAgent(data);
+  await submitToAgent(data);
 });
 
 // ============================================
@@ -47,21 +46,21 @@ document.getElementById('estimate-form').addEventListener('submit', async (e) =>
 // ============================================
 
 document.getElementById('design-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const formData = new FormData(e.target);
-    const data = {
-        inquiry_type: 'design_consultation',
-        design_phase: {
-            wireframe_ready: formData.get('wireframe_ready') === 'on',
-            design_company_selected: formData.get('design_company_selected') === 'on',
-            figma_experience: formData.get('figma_experience'),
-            screen_count: parseInt(formData.get('screen_count')),
-            responsive_required: formData.get('responsive_required') === 'on'
-        }
-    };
+  const formData = new FormData(e.target);
+  const data = {
+    inquiry_type: 'design_consultation',
+    design_phase: {
+      wireframe_ready: formData.get('wireframe_ready') === 'on',
+      design_company_selected: formData.get('design_company_selected') === 'on',
+      figma_experience: formData.get('figma_experience'),
+      screen_count: parseInt(formData.get('screen_count')),
+      responsive_required: formData.get('responsive_required') === 'on'
+    }
+  };
 
-    await submitToAgent(data);
+  await submitToAgent(data);
 });
 
 // ============================================
@@ -69,49 +68,48 @@ document.getElementById('design-form').addEventListener('submit', async (e) => {
 // ============================================
 
 async function submitToAgent(data) {
-    const loadingEl = document.getElementById('loading');
-    const resultEl = document.getElementById('result');
-    const resultContentEl = document.getElementById('result-content');
+  const loadingEl = document.getElementById('loading');
+  const resultEl = document.getElementById('result');
+  const resultContentEl = document.getElementById('result-content');
 
-    // Show loading
-    loadingEl.style.display = 'flex';
-    resultEl.style.display = 'none';
+  // Show loading
+  loadingEl.style.display = 'flex';
+  resultEl.style.display = 'none';
 
-    try {
-        const response = await fetch(API_ENDPOINT, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`
-            },
-            body: JSON.stringify({
-                user_input: data
-            })
-        });
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_input: data
+      })
+    });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-        const result = await response.json();
+    const result = await response.json();
 
-        // Hide loading, show result
-        loadingEl.style.display = 'none';
-        resultEl.style.display = 'block';
+    // Hide loading, show result
+    loadingEl.style.display = 'none';
+    resultEl.style.display = 'block';
 
-        // Display result
-        resultContentEl.innerHTML = result.response || JSON.stringify(result, null, 2);
+    // Display result
+    resultContentEl.innerHTML = result.response || JSON.stringify(result, null, 2);
 
-        // Scroll to result
-        resultEl.scrollIntoView({ behavior: 'smooth' });
+    // Scroll to result
+    resultEl.scrollIntoView({ behavior: 'smooth' });
 
-    } catch (error) {
-        console.error('Error:', error);
+  } catch (error) {
+    console.error('Error:', error);
 
-        // Hide loading, show error
-        loadingEl.style.display = 'none';
-        resultEl.style.display = 'block';
-        resultContentEl.innerHTML = `
+    // Hide loading, show error
+    loadingEl.style.display = 'none';
+    resultEl.style.display = 'block';
+    resultContentEl.innerHTML = `
       <div style="color: var(--error);">
         <h3>エラーが発生しました</h3>
         <p>${error.message}</p>
@@ -120,7 +118,7 @@ async function submitToAgent(data) {
         </p>
       </div>
     `;
-    }
+  }
 }
 
 // ============================================
