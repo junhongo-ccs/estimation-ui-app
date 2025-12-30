@@ -11,18 +11,19 @@
 
 <body>
   <div class="container">
-    <header class="header">
-      <div class="header-content">
-        <h1>AI見積もりシステム</h1>
+    <main class="main">
+      <!-- ユーティリティボタン（やり直し） -->
+      <div class="chat-utilities">
         <button id="reset-btn" class="btn btn-outline-danger btn-sm">最初からやり直す</button>
       </div>
-      <p class="subtitle">チャットで簡単見積もり - 開発からデザインまで総合サポート</p>
-    </header>
 
-    <main class="main">
       <!-- チャットタイムライン -->
       <div class="chat-timeline" id="chat-timeline">
         <!-- メッセージがここに追加されます -->
+        <div class="loading" id="loading" style="display: none;">
+          <div class="spinner"></div>
+          <p>AI が回答を生成中...</p>
+        </div>
       </div>
 
       <!-- 入力エリア -->
@@ -38,11 +39,6 @@
         </button>
       </div>
 
-      <!-- ローディング -->
-      <div class="loading" id="loading" style="display: none;">
-        <div class="spinner"></div>
-        <p>AI が回答を生成中...</p>
-      </div>
     </main>
   </div>
 
