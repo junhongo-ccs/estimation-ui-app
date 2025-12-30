@@ -99,6 +99,11 @@ async function handleOptionClick(option, buttonElement) {
   // Add user message
   addUserMessage(option.label);
 
+  // If "Other" is selected, focus input for free text
+  if (option.value === 'other' || option.label.includes('その他')) {
+    userInput.focus();
+  }
+
   // Send to API
   await sendMessageToAPI(option.label, option.value);
 }
