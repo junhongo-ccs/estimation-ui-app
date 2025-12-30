@@ -21,6 +21,7 @@ const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
 const downloadArea = document.getElementById('download-area');
 const downloadBtn = document.getElementById('download-btn');
+const resetBtn = document.getElementById('reset-btn');
 const loading = document.getElementById('loading');
 
 // Initialize
@@ -61,6 +62,9 @@ function setupEventListeners() {
 
   // Download button click
   downloadBtn.addEventListener('click', handleDownload);
+
+  // Reset button click
+  resetBtn.addEventListener('click', handleReset);
 }
 
 /**
@@ -167,9 +171,10 @@ async function sendMessageToAPI(message, selectedOption = null) {
 
   } catch (error) {
     console.error('Error sending message:', error);
-    addAIMessage(
-      '申し訳ございません。エラーが発生しました。もう一度お試しください。\n\nエラー: ' + error.message
-    );
+    const errorEl = createMessageElement('ai', '申し訳ございません。エラーが発生しました。もう一度お試しください。\n\nエラー: ' + error.message);
+    errorEl.classList.add('error-message');
+    chatTimeline.appendChild(errorEl);
+    scrollToBottom();
   } finally {
     hideLoading();
     state.isWaitingForResponse = false;
@@ -189,7 +194,7 @@ function addUserMessage(message) {
  * Add AI message to chat
  */
 function addAIMessage(message, options = null) {
-  const messageEl = createMessageElement('ai', message);
+  const messageEl = createMessageElement('ai', message, options);
 
   // Add options if present
   if (options && options.length > 0) {
@@ -204,20 +209,60 @@ function addAIMessage(message, options = null) {
 /**
  * Create message element
  */
-function createMessageElement(type, content) {
+function createMessageElement(type, content, options = null) {
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${type}-message fade-in`;
 
+  // Create icon
+  const iconDiv = document.createElement('div');
+  iconDiv.className = 'message-icon';
+  if (type === 'ai') {
+    iconDiv.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 8V4H8"></path>
+        <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+        <path d="M2 14h2"></path>
+        <path d="M20 14h2"></path>
+        <path d="M15 13v2"></path>
+        <path d="M9 13v2"></path>
+      </svg>`;
+  } else {
+    iconDiv.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>`;
+  }
+
+  const messageBody = document.createElement('div');
+  messageBody.className = 'message-body';
+
+  // If options are extracted, we might want to clean them from the text to avoid duplication
+  let displayContent = content;
+  if (options && options.length > 0) {
+    // Remove lines that only contain options like [Option 1] [Option 2]
+    displayContent = displayContent.replace(/\s*\[[^\]\n]+\]\s*/g, ' ').trim();
+  }
+
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
-  contentDiv.textContent = content;
+
+  // Simple markdown-to-html for bold and newlines
+  const formattedContent = displayContent
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+
+  contentDiv.innerHTML = formattedContent;
 
   const timestampDiv = document.createElement('div');
   timestampDiv.className = 'message-timestamp';
   timestampDiv.textContent = getCurrentTime();
 
-  messageDiv.appendChild(contentDiv);
-  messageDiv.appendChild(timestampDiv);
+  messageBody.appendChild(contentDiv);
+  messageBody.appendChild(timestampDiv);
+
+  messageDiv.appendChild(iconDiv);
+  messageDiv.appendChild(messageBody);
 
   return messageDiv;
 }
@@ -299,6 +344,44 @@ function handleDownload() {
   // Cleanup
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Handle session reset
+ */
+async function handleReset() {
+  if (state.isWaitingForResponse) return;
+
+  if (!confirm('全ての会話履歴が削除されます。最初からやり直しますか？')) {
+    return;
+  }
+
+  // If we have a sessionId, try to delete it on the server
+  if (state.sessionId) {
+    const baseUrl = API_ENDPOINT.substring(0, API_ENDPOINT.lastIndexOf('/'));
+    try {
+      await fetch(`${baseUrl}/sessions/${state.sessionId}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.warn('Failed to delete session on server:', error);
+    }
+  }
+
+  // Reset UI
+  chatTimeline.innerHTML = '';
+  downloadArea.style.display = 'none';
+  userInput.value = '';
+
+  // Reset State
+  state.sessionId = null;
+  state.conversationHistory = [];
+  state.isComplete = false;
+  state.finalMarkdown = null;
+  state.isWaitingForResponse = false;
+
+  // Re-initialize
+  initializeChat();
 }
 
 /**

@@ -2,19 +2,38 @@
    Layout - 8px Grid System
    ============================================ */
 
+html,
+body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
 .container {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
-    padding: var(--space-4);
-    /* 32px */
+    padding: var(--space-2);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .header {
     text-align: center;
-    margin-bottom: var(--space-8);
-    /* 64px */
-    padding: var(--space-6) 0;
-    /* 48px 0 */
+    margin-bottom: var(--space-4);
+    padding: var(--space-4) 0;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.header-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-4);
+    position: relative;
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
 .header h1 {
@@ -31,14 +50,14 @@
 .main {
     background: var(--surface);
     border-radius: var(--radius-lg);
-    /* 16px */
-    padding: var(--space-6);
-    /* 48px */
+    padding: var(--space-4);
     box-shadow: var(--shadow-md);
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    /* 32px */
+    gap: var(--space-3);
+    flex: 1;
+    overflow: hidden;
+    margin-bottom: var(--space-2);
 }
 
 /* ============================================
@@ -46,7 +65,8 @@
    ============================================ */
 
 .chat-timeline {
-    height: 600px;
+    flex: 1;
+    min-height: 0;
     /* 75 * 8px */
     overflow-y: auto;
     padding: var(--space-4);
@@ -88,11 +108,11 @@
 
 .message {
     display: flex;
-    flex-direction: column;
     gap: var(--space-2);
     /* 16px */
-    max-width: 80%;
+    max-width: 85%;
     animation: messageSlideIn 0.3s ease-out;
+    align-items: flex-start;
 }
 
 @keyframes messageSlideIn {
@@ -110,10 +130,52 @@
 
 .message.ai-message {
     align-self: flex-start;
+    flex-direction: row;
 }
 
 .message.user-message {
     align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.message-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.message-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.ai-message .message-icon {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.user-message .message-icon {
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+}
+
+.message-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.user-message .message-body {
+    align-items: flex-end;
 }
 
 .message-content {
@@ -150,6 +212,12 @@
 
 .user-message .message-timestamp {
     align-self: flex-end;
+}
+
+.message.error-message .message-content {
+    background: var(--error-light, #fee2e2);
+    border: 1px solid var(--error);
+    color: var(--error);
 }
 
 /* ============================================
@@ -303,6 +371,24 @@
     background: var(--success-dark);
 }
 
+.btn-outline-danger {
+    background: transparent;
+    border: 1px solid var(--error);
+    color: var(--error);
+    font-size: var(--font-size-xs);
+    padding: var(--space-1) var(--space-2);
+}
+
+.btn-outline-danger:hover {
+    background: var(--error);
+    color: white;
+}
+
+.btn-sm {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-xs);
+}
+
 /* ============================================
    Loading - 8px Grid
    ============================================ */
@@ -362,10 +448,9 @@
     }
 
     .chat-timeline {
-        height: 400px;
-        /* 50 * 8px */
+        height: auto;
+        flex: 1;
         padding: var(--space-2);
-        /* 16px */
     }
 
     .message {
