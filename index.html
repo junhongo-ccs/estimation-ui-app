@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI見積もりシステム</title>
+  <title>AI見積もりシステム V2</title>
   <link rel="stylesheet" href="styles/design-system.css">
   <link rel="stylesheet" href="styles/app.css">
 </head>
@@ -13,88 +13,26 @@
   <div class="container">
     <header class="header">
       <h1>AI見積もりシステム</h1>
-      <p class="subtitle">開発コストとデザインフェーズをサポート</p>
+      <p class="subtitle">チャットで簡単見積もり - 開発からデザインまで総合サポート</p>
     </header>
 
     <main class="main">
-      <div class="tabs">
-        <button class="tab active" data-tab="estimate">開発見積もり</button>
-        <button class="tab" data-tab="design">デザイン相談</button>
+      <!-- チャットタイムライン -->
+      <div class="chat-timeline" id="chat-timeline">
+        <!-- メッセージがここに追加されます -->
       </div>
 
-      <!-- 開発見積もりフォーム -->
-      <div class="tab-content active" id="estimate-tab">
-        <form class="form" id="estimate-form">
-          <div class="form-group">
-            <label for="project-type">プロジェクトタイプ</label>
-            <select id="project-type" name="project_type" required>
-              <option value="">選択してください</option>
-              <option value="web_app">Webアプリケーション</option>
-              <option value="mobile_app">モバイルアプリ</option>
-              <option value="both">Web + モバイル</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="duration">開発期間（月）</label>
-            <input type="number" id="duration" name="duration_months" min="1" max="24" value="6" required>
-          </div>
-
-          <div class="form-group">
-            <label for="team-size">チームサイズ</label>
-            <input type="number" id="team-size" name="team_size" min="1" max="20" value="3" required>
-          </div>
-
-          <button type="submit" class="btn btn-primary">見積もりを取得</button>
-        </form>
+      <!-- 入力エリア -->
+      <div class="input-area">
+        <input type="text" id="user-input" class="input-field" placeholder="メッセージを入力..." autocomplete="off">
+        <button id="send-btn" class="btn btn-primary">送信</button>
       </div>
 
-      <!-- デザイン相談フォーム -->
-      <div class="tab-content" id="design-tab">
-        <form class="form" id="design-form">
-          <div class="form-group">
-            <label>現在の状況</label>
-            <div class="checkbox-group">
-              <label class="checkbox">
-                <input type="checkbox" name="wireframe_ready">
-                <span>ワイヤーフレーム作成済み</span>
-              </label>
-              <label class="checkbox">
-                <input type="checkbox" name="design_company_selected">
-                <span>デザイン会社選定済み</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="figma-experience">Figma経験</label>
-            <select id="figma-experience" name="figma_experience">
-              <option value="none">なし</option>
-              <option value="basic">少しある</option>
-              <option value="advanced">詳しい</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="screen-count">画面数</label>
-            <input type="number" id="screen-count" name="screen_count" min="1" value="10">
-          </div>
-
-          <div class="form-group">
-            <label class="checkbox">
-              <input type="checkbox" name="responsive_required" checked>
-              <span>レスポンシブ対応必要</span>
-            </label>
-          </div>
-
-          <button type="submit" class="btn btn-primary">相談する</button>
-        </form>
-      </div>
-
-      <!-- 結果表示エリア -->
-      <div class="result" id="result" style="display: none;">
-        <h2>回答</h2>
-        <div class="result-content" id="result-content"></div>
+      <!-- ダウンロードエリア（会話完了時に表示） -->
+      <div class="download-area" id="download-area" style="display: none;">
+        <button id="download-btn" class="btn btn-success">
+          📥 見積もり書をダウンロード
+        </button>
       </div>
 
       <!-- ローディング -->

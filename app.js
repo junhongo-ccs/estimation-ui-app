@@ -1,175 +1,327 @@
-// ============================================
-// Configuration
-// ============================================
+/**
+ * AI Estimation System V2 - Chat UI
+ * Conversational interface for estimation consultation
+ */
 
+// Configuration
 const API_ENDPOINT = 'https://estimation-agent-app.blueplant-e852c27d.eastus2.azurecontainerapps.io/score';
 
-// ============================================
-// Tab Switching
-// ============================================
+// State management
+const state = {
+  sessionId: null,
+  conversationHistory: [],
+  isComplete: false,
+  finalMarkdown: null,
+  isWaitingForResponse: false
+};
 
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    // Remove active class from all tabs and contents
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+// DOM Elements
+const chatTimeline = document.getElementById('chat-timeline');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const downloadArea = document.getElementById('download-area');
+const downloadBtn = document.getElementById('download-btn');
+const loading = document.getElementById('loading');
 
-    // Add active class to clicked tab
-    tab.classList.add('active');
-
-    // Show corresponding content
-    const tabName = tab.dataset.tab;
-    document.getElementById(`${tabName}-tab`).classList.add('active');
-  });
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  initializeChat();
+  setupEventListeners();
 });
 
-// ============================================
-// Form Submission - Estimate
-// ============================================
+/**
+ * Initialize chat with welcome message
+ */
+function initializeChat() {
+  addAIMessage(
+    'こんにちは！開発プロジェクトの見積もりをお手伝いいたします。\nまず、どのようなシステムを開発されますか？',
+    [
+      { label: 'Webアプリケーション', value: 'web_app' },
+      { label: 'モバイルアプリ', value: 'mobile_app' },
+      { label: 'Web + モバイル', value: 'both' },
+      { label: 'その他', value: 'other' }
+    ]
+  );
+}
 
-document.getElementById('estimate-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
+/**
+ * Setup event listeners
+ */
+function setupEventListeners() {
+  // Send button click
+  sendBtn.addEventListener('click', handleSendMessage);
 
-  const formData = new FormData(e.target);
-  const data = {
-    project_type: formData.get('project_type'),
-    duration_months: parseInt(formData.get('duration_months')),
-    team_size: parseInt(formData.get('team_size')),
-    inquiry_type: 'development_estimate'
-  };
-
-  await submitToAgent(data);
-});
-
-// ============================================
-// Form Submission - Design Consultation
-// ============================================
-
-document.getElementById('design-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  const formData = new FormData(e.target);
-  const data = {
-    inquiry_type: 'design_consultation',
-    design_phase: {
-      wireframe_ready: formData.get('wireframe_ready') === 'on',
-      design_company_selected: formData.get('design_company_selected') === 'on',
-      figma_experience: formData.get('figma_experience'),
-      screen_count: parseInt(formData.get('screen_count')),
-      responsive_required: formData.get('responsive_required') === 'on'
+  // Enter key in input field
+  userInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
-  };
+  });
 
-  await submitToAgent(data);
-});
+  // Download button click
+  downloadBtn.addEventListener('click', handleDownload);
+}
 
-// ============================================
-// API Call
-// ============================================
+/**
+ * Handle send message
+ */
+async function handleSendMessage() {
+  const message = userInput.value.trim();
 
-async function submitToAgent(data) {
-  const loadingEl = document.getElementById('loading');
-  const resultEl = document.getElementById('result');
-  const resultContentEl = document.getElementById('result-content');
+  if (!message || state.isWaitingForResponse) {
+    return;
+  }
 
-  // Show loading
-  loadingEl.style.display = 'flex';
-  resultEl.style.display = 'none';
+  // Add user message to UI
+  addUserMessage(message);
+
+  // Clear input
+  userInput.value = '';
+
+  // Send to API
+  await sendMessageToAPI(message);
+}
+
+/**
+ * Handle option button click
+ */
+async function handleOptionClick(option, buttonElement) {
+  if (state.isWaitingForResponse) {
+    return;
+  }
+
+  // Disable all option buttons in this message
+  const optionsContainer = buttonElement.parentElement;
+  const allButtons = optionsContainer.querySelectorAll('.option-btn');
+  allButtons.forEach(btn => btn.disabled = true);
+
+  // Add user message
+  addUserMessage(option.label);
+
+  // Send to API
+  await sendMessageToAPI(option.label, option.value);
+}
+
+/**
+ * Send message to API
+ */
+async function sendMessageToAPI(message, selectedOption = null) {
+  state.isWaitingForResponse = true;
+  showLoading();
 
   try {
+    const requestBody = {
+      user_input: {
+        message: message,
+        selected_option: selectedOption
+      },
+      session_id: state.sessionId,
+      conversation_history: state.conversationHistory
+    };
+
     const response = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        user_input: data
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const result = await response.json();
+    const data = await response.json();
 
-    // Hide loading, show result
-    loadingEl.style.display = 'none';
-    resultEl.style.display = 'block';
+    // Update session ID
+    if (data.session_id) {
+      state.sessionId = data.session_id;
+    }
 
-    // Display result
-    resultContentEl.innerHTML = result.response || JSON.stringify(result, null, 2);
+    // Update conversation history
+    state.conversationHistory.push(
+      { role: 'user', content: message },
+      { role: 'assistant', content: data.message }
+    );
 
-    // Scroll to result
-    resultEl.scrollIntoView({ behavior: 'smooth' });
+    // Check if conversation is complete
+    if (data.is_complete) {
+      state.isComplete = true;
+      state.finalMarkdown = data.markdown;
+
+      // Show AI message
+      addAIMessage(data.message);
+
+      // Show download button
+      showDownloadButton();
+    } else {
+      // Show AI message with options
+      addAIMessage(data.message, data.options);
+    }
 
   } catch (error) {
-    console.error('Error:', error);
-
-    // Hide loading, show error
-    loadingEl.style.display = 'none';
-    resultEl.style.display = 'block';
-    resultContentEl.innerHTML = `
-      <div style="color: var(--error);">
-        <h3>エラーが発生しました</h3>
-        <p>${error.message}</p>
-        <p style="font-size: var(--font-size-sm); color: var(--text-secondary);">
-          APIエンドポイントまたはAPIキーを確認してください。
-        </p>
-      </div>
-    `;
+    console.error('Error sending message:', error);
+    addAIMessage(
+      '申し訳ございません。エラーが発生しました。もう一度お試しください。\n\nエラー: ' + error.message
+    );
+  } finally {
+    hideLoading();
+    state.isWaitingForResponse = false;
   }
 }
 
-// ============================================
-// Development Mode - Mock Response
-// ============================================
-
-// Uncomment this to test without API
-/*
-async function submitToAgent(data) {
-  const loadingEl = document.getElementById('loading');
-  const resultEl = document.getElementById('result');
-  const resultContentEl = document.getElementById('result-content');
-  
-  loadingEl.style.display = 'flex';
-  resultEl.style.display = 'none';
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  loadingEl.style.display = 'none';
-  resultEl.style.display = 'block';
-  
-  if (data.inquiry_type === 'development_estimate') {
-    resultContentEl.innerHTML = `
-      <div class="doc--8px">
-        <h3>見積もり結果</h3>
-        <p><strong>総額: ¥18,000,000</strong></p>
-        <ul>
-          <li>開発費: ¥12,600,000</li>
-          <li>デザイン費: ¥3,600,000</li>
-          <li>管理費: ¥1,800,000</li>
-        </ul>
-        <p>この見積もりは、${data.team_size}名のチームで${data.duration_months}ヶ月間の開発を想定しています。</p>
-      </div>
-    `;
-  } else {
-    resultContentEl.innerHTML = `
-      <div class="doc--8px">
-        <h3>デザインフェーズのアドバイス</h3>
-        <p>画面数${data.design_phase.screen_count}画面のプロジェクトですね。</p>
-        <h4>推奨事項:</h4>
-        <ul>
-          <li>ワイヤーフレームを作成してからデザイン会社に依頼しましょう</li>
-          <li>Figmaでのデザイン制作を推奨します</li>
-          <li>デザイン費用の目安: ¥400,000 - ¥800,000</li>
-          <li>納期の目安: 4-6週間</li>
-        </ul>
-      </div>
-    `;
-  }
-  
-  resultEl.scrollIntoView({ behavior: 'smooth' });
+/**
+ * Add user message to chat
+ */
+function addUserMessage(message) {
+  const messageEl = createMessageElement('user', message);
+  chatTimeline.appendChild(messageEl);
+  scrollToBottom();
 }
-*/
+
+/**
+ * Add AI message to chat
+ */
+function addAIMessage(message, options = null) {
+  const messageEl = createMessageElement('ai', message);
+
+  // Add options if present
+  if (options && options.length > 0) {
+    const optionsEl = createOptionsElement(options);
+    messageEl.appendChild(optionsEl);
+  }
+
+  chatTimeline.appendChild(messageEl);
+  scrollToBottom();
+}
+
+/**
+ * Create message element
+ */
+function createMessageElement(type, content) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${type}-message fade-in`;
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'message-content';
+  contentDiv.textContent = content;
+
+  const timestampDiv = document.createElement('div');
+  timestampDiv.className = 'message-timestamp';
+  timestampDiv.textContent = getCurrentTime();
+
+  messageDiv.appendChild(contentDiv);
+  messageDiv.appendChild(timestampDiv);
+
+  return messageDiv;
+}
+
+/**
+ * Create options element
+ */
+function createOptionsElement(options) {
+  const optionsDiv = document.createElement('div');
+  optionsDiv.className = 'message-options';
+
+  options.forEach(option => {
+    const button = document.createElement('button');
+    button.className = 'option-btn';
+    button.textContent = option.label;
+
+    // Add special class for "その他" button
+    if (option.value === 'other' || option.label.includes('その他')) {
+      button.classList.add('other-btn');
+    }
+
+    button.addEventListener('click', () => handleOptionClick(option, button));
+
+    optionsDiv.appendChild(button);
+  });
+
+  return optionsDiv;
+}
+
+/**
+ * Show loading indicator
+ */
+function showLoading() {
+  loading.style.display = 'flex';
+  sendBtn.disabled = true;
+  userInput.disabled = true;
+}
+
+/**
+ * Hide loading indicator
+ */
+function hideLoading() {
+  loading.style.display = 'none';
+  sendBtn.disabled = false;
+  userInput.disabled = false;
+  userInput.focus();
+}
+
+/**
+ * Show download button
+ */
+function showDownloadButton() {
+  downloadArea.style.display = 'block';
+  downloadArea.classList.add('fade-in');
+}
+
+/**
+ * Handle download
+ */
+function handleDownload() {
+  if (!state.finalMarkdown) {
+    alert('ダウンロード可能な見積もり書がありません。');
+    return;
+  }
+
+  // Create blob
+  const blob = new Blob([state.finalMarkdown], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  // Create download link
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `見積もり相談_${getDateString()}.md`;
+
+  // Trigger download
+  document.body.appendChild(a);
+  a.click();
+
+  // Cleanup
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Scroll to bottom of chat
+ */
+function scrollToBottom() {
+  setTimeout(() => {
+    chatTimeline.scrollTop = chatTimeline.scrollHeight;
+  }, 100);
+}
+
+/**
+ * Get current time string
+ */
+function getCurrentTime() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+/**
+ * Get date string for filename
+ */
+function getDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
