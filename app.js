@@ -22,6 +22,7 @@ const sendBtn = document.getElementById('send-btn');
 const downloadArea = document.getElementById('download-area');
 const downloadBtn = document.getElementById('download-btn');
 const resetBtn = document.getElementById('reset-btn');
+const helpBtn = document.getElementById('help-btn');
 const loading = document.getElementById('loading');
 
 // Initialize
@@ -53,7 +54,7 @@ function setupEventListeners() {
   sendBtn.addEventListener('click', handleSendMessage);
 
   // Enter key in input field
-  userInput.addEventListener('keypress', (e) => {
+  userInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -65,6 +66,11 @@ function setupEventListeners() {
 
   // Reset button click
   resetBtn.addEventListener('click', handleReset);
+
+  // Help button click
+  helpBtn.addEventListener('click', () => {
+    window.open('help.html', '_blank');
+  });
 }
 
 /**
@@ -90,26 +96,53 @@ async function handleSendMessage() {
 /**
  * Handle option button click
  */
-async function handleOptionClick(option, buttonElement) {
+async function handleOptionClick(option, buttonElement, isMultiSelect = false) {
   if (state.isWaitingForResponse) {
     return;
   }
 
-  // Disable all option buttons in this message
+  if (isMultiSelect) {
+    // Toggle selection
+    buttonElement.classList.toggle('selected');
+    return;
+  }
+
+  // Single select mode (existing logic)
   const optionsContainer = buttonElement.parentElement;
   const allButtons = optionsContainer.querySelectorAll('.option-btn');
   allButtons.forEach(btn => btn.disabled = true);
 
-  // Add user message
   addUserMessage(option.label);
 
-  // If "Other" is selected, focus input for free text
   if (option.value === 'other' || option.label.includes('その他')) {
     userInput.focus();
   }
 
-  // Send to API
   await sendMessageToAPI(option.label, option.value);
+}
+
+/**
+ * Handle confirmation of multiple selections
+ */
+async function handleMultiSelectConfirm(optionsContainer) {
+  if (state.isWaitingForResponse) return;
+
+  const selectedButtons = optionsContainer.querySelectorAll('.option-btn.selected');
+  const selectedLabels = Array.from(selectedButtons).map(btn => btn.textContent);
+
+  if (selectedLabels.length === 0) {
+    alert('少なくとも1つ選択してください。');
+    return;
+  }
+
+  // Disable all buttons
+  const allButtons = optionsContainer.querySelectorAll('.option-btn, .btn-confirm');
+  allButtons.forEach(btn => btn.disabled = true);
+
+  const combinedMessage = selectedLabels.join('、');
+  addUserMessage(combinedMessage);
+
+  await sendMessageToAPI(combinedMessage);
 }
 
 /**
@@ -198,7 +231,8 @@ function addAIMessage(message, options = null) {
 
   // Add options if present
   if (options && options.length > 0) {
-    const optionsEl = createOptionsElement(options);
+    const isMultiSelect = message.includes('複数回答可') || message.includes('複数選択') || message.includes('すべて選んで');
+    const optionsEl = createOptionsElement(options, isMultiSelect);
     messageEl.appendChild(optionsEl);
   }
 
@@ -237,10 +271,14 @@ function createMessageElement(type, content, options = null) {
   const messageBody = document.createElement('div');
   messageBody.className = 'message-body';
 
-  // If options are extracted, we might want to clean them from the text to avoid duplication
+  // Clean content
   let displayContent = content;
+
+  // 1. Strip markdown code block markers if present
+  displayContent = displayContent.replace(/```markdown\n?|```/g, '').trim();
+
+  // 2. Remove lines that only contain options like [Option 1] [Option 2]
   if (options && options.length > 0) {
-    // Remove lines that only contain options like [Option 1] [Option 2]
     displayContent = displayContent.replace(/\s*\[[^\]\n]+\]\s*/g, ' ').trim();
   }
 
@@ -270,24 +308,31 @@ function createMessageElement(type, content, options = null) {
 /**
  * Create options element
  */
-function createOptionsElement(options) {
+function createOptionsElement(options, isMultiSelect = false) {
   const optionsDiv = document.createElement('div');
   optionsDiv.className = 'message-options';
+  if (isMultiSelect) optionsDiv.classList.add('multi-select');
 
   options.forEach(option => {
     const button = document.createElement('button');
     button.className = 'option-btn';
     button.textContent = option.label;
 
-    // Add special class for "その他" button
     if (option.value === 'other' || option.label.includes('その他')) {
       button.classList.add('other-btn');
     }
 
-    button.addEventListener('click', () => handleOptionClick(option, button));
-
+    button.addEventListener('click', () => handleOptionClick(option, button, isMultiSelect));
     optionsDiv.appendChild(button);
   });
+
+  if (isMultiSelect) {
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'btn btn-primary btn-sm btn-confirm';
+    confirmBtn.textContent = '選択を確定する';
+    confirmBtn.addEventListener('click', () => handleMultiSelectConfirm(optionsDiv));
+    optionsDiv.appendChild(confirmBtn);
+  }
 
   return optionsDiv;
 }
