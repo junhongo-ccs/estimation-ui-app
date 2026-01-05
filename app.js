@@ -55,7 +55,7 @@ function setupEventListeners() {
 
   // Enter key in input field
   userInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -151,6 +151,14 @@ async function handleMultiSelectConfirm(optionsContainer) {
 async function sendMessageToAPI(message, selectedOption = null) {
   state.isWaitingForResponse = true;
   showLoading();
+
+  // 見積もり確定時の特別演出
+  if (message === 'はい、作成してください' || message.includes('作成してください')) {
+    addAIMessage('それでは概算見積もりを計算します');
+    await new Promise(resolve => setTimeout(resolve, 800));
+    addAIMessage('計算中 ... ');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
 
   try {
     const requestBody = {
@@ -341,7 +349,8 @@ function createOptionsElement(options, isMultiSelect = false) {
  * Show loading indicator
  */
 function showLoading() {
-  loading.style.display = 'flex';
+  // スピナー表示はUI安定性のため廃止
+  // loading.style.display = 'flex';
   sendBtn.disabled = true;
   userInput.disabled = true;
 }
@@ -350,7 +359,8 @@ function showLoading() {
  * Hide loading indicator
  */
 function hideLoading() {
-  loading.style.display = 'none';
+  // スピナー非表示はUI安定性のため廃止
+  // loading.style.display = 'none';
   sendBtn.disabled = false;
   userInput.disabled = false;
   userInput.focus();
