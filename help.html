@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使い方ヘルプ - AI見積もりシステム V2</title>
+    <link rel="stylesheet" href="styles/design-system.css">
+    <link rel="stylesheet" href="styles/app.css">
+    <style>
+        .help-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: var(--space-6);
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            line-height: 1.8;
+        }
+
+        .help-header {
+            border-bottom: 2px solid var(--primary);
+            margin-bottom: var(--space-6);
+            padding-bottom: var(--space-2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .help-content h1 {
+            color: var(--primary);
+            margin-bottom: var(--space-4);
+        }
+
+        .help-content h2 {
+            margin-top: var(--space-6);
+            color: var(--text-primary);
+            border-left: 4px solid var(--primary);
+            padding-left: var(--space-2);
+        }
+
+        .help-content ul,
+        .help-content ol {
+            margin: var(--space-4) 0;
+            padding-left: var(--space-4);
+        }
+
+        .help-content li {
+            margin-bottom: var(--space-2);
+        }
+
+        .close-btn {
+            position: sticky;
+            top: 20px;
+            float: right;
+        }
+
+        @media (max-width: 768px) {
+            .help-container {
+                margin: 0;
+                border-radius: 0;
+                padding: var(--space-4);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="help-container">
+        <div class="help-header">
+            <h1>ユーザーガイド</h1>
+            <button onclick="window.close()" class="btn btn-outline-danger btn-sm">閉じる</button>
+        </div>
+
+        <div class="help-content">
+            <p>V2では、従来のフォーム形式からチャット形式の「デザイン・見積もり相談アシスタント」に進化しました。</p>
+
+            <h2>主な特徴</h2>
+            <ul>
+                <li><strong>対話型ヒアリング</strong>: AIが対話を通じて要件を引き出します。</li>
+                <li><strong>SIer基準の価格設定</strong>: 中堅SIer相場に基づいた精緻な見積もり。</li>
+                <li><strong>デザイン重視</strong>: UI/UXデザインフェーズの重要性を考慮した提案。</li>
+                <li><strong>Markdown出力</strong>: 相談完了後、提案書をMarkdown形式でダウンロード可能。</li>
+            </ul>
+
+            <h2>使い方</h2>
+            <ol>
+                <li><strong>チャットの開始</strong>: 最初に「Webアプリ」「モバイルアプリ」などのタイプを選択してください。</li>
+                <li><strong>概要の説明</strong>: AIが「どのようなシステムか」を尋ねます。自由に入力してください。</li>
+                <li><strong>機能の選択</strong>: AIが提案する機能一覧から、必要なものを複数選択してください。</li>
+                <li><strong>ヒアリングへの回答</strong>: その後、デザインやスケジュールについてAIと対話します。</li>
+                <li><strong>見積もりの生成</strong>: 必要な情報が揃うと、AIが提案書を作成します。</li>
+                <li><strong>ダウンロード</strong>: 最後に表示されるボタンから提案書を保存してください。</li>
+            </ol>
+
+            <h2>困ったときは</h2>
+            <ul>
+                <li><strong>エラーが表示された場合</strong>: 通信環境を確認し、ページをリロードしてください。</li>
+                <li><strong>最初からやり直したい場合</strong>: チャット画面右上の「最初からやり直す」ボタンを押してください。</li>
+            </ul>
+        </div>
+
+        <div style="margin-top: var(--space-8); text-align: center;">
+            <button onclick="window.close()" class="btn btn-primary">チャットに戻る</button>
+        </div>
+    </div>
+</body>
+
+</html>

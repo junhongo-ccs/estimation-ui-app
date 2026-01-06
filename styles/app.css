@@ -71,14 +71,19 @@ body {
 
 #reset-btn,
 #help-btn {
-    opacity: 0.7;
-    transition: opacity 0.2s;
+    opacity: 0.8;
+    transition: all var(--transition-base);
     background: var(--surface);
+    border: 1px solid var(--border);
 }
 
 #reset-btn:hover,
 #help-btn:hover {
     opacity: 1;
+    cursor: pointer;
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
 }
 
 .btn-outline-primary {
@@ -103,7 +108,8 @@ body {
     overflow-y: auto;
     padding: var(--space-4);
     /* 32px */
-    background: var(--background);
+    background: #ffffff;
+    /* Explicit white for chat card area */
     border-radius: var(--radius-md);
     /* 12px */
     display: flex;
@@ -323,6 +329,8 @@ body {
 
 .input-area {
     display: flex;
+    align-items: center;
+    /* Center items vertically */
     gap: var(--space-1);
     /* 8px */
     padding: var(--space-1);
@@ -336,13 +344,16 @@ body {
 
 .input-field {
     flex: 1;
-    padding: var(--space-2) var(--space-3);
-    /* 16px 24px */
+    height: 48px;
+    /* Force height for alignment */
+    padding: 0 var(--space-3);
+    /* 0 24px */
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     /* 12px */
     font-size: var(--font-size-base);
     transition: all var(--transition-base);
+    background: transparent;
 }
 
 .input-field:focus {
@@ -398,6 +409,21 @@ body {
 .btn-primary {
     background: var(--primary);
     color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.compact-icon-btn {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    min-width: 48px;
+    border-radius: var(--radius-md);
+}
+
+.compact-icon-btn img {
+    display: block;
 }
 
 .btn-primary:hover {
@@ -419,16 +445,18 @@ body {
 }
 
 .btn-outline-danger {
-    background: transparent;
-    border: 1px solid var(--error);
-    color: var(--error);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
     font-size: var(--font-size-xs);
     padding: var(--space-1) var(--space-2);
 }
 
 .btn-outline-danger:hover {
-    background: var(--error);
-    color: white;
+    cursor: pointer;
+    border-color: var(--error);
+    color: var(--error);
+    background: var(--error-light, #fee2e2);
 }
 
 .btn-sm {
