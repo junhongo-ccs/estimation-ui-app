@@ -542,7 +542,11 @@ async function handleGate1Selection(option, buttonElement) {
 
   addAIMessage(`Gate 2（手法の仮決定）: ${methodSelection.label} を採用します。バックエンドへ通知しました。`);
   if (methodSelection) {
-    await sendMessageToAPI(methodSelection.label, methodSelection.value, { suppressAssistant: true });
+    try {
+      await sendMessageToAPI(methodSelection.label, methodSelection.value, { suppressAssistant: true });
+    } catch (error) {
+      addAIMessage('手法の通知に失敗しましたが、Gate 3 へ進みます。');
+    }
   }
 
   state.gate.stage = 'gate3';
