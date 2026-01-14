@@ -36,12 +36,12 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 function initializeChat() {
   addAIMessage(
-    'こんにちは！開発プロジェクトの見積もりをお手伝いいたします。\nまず、どのようなシステムを開発されますか？',
+    'V2見積もりエージェントです。\n適切な見積り手法を選定するため、まずは「プロジェクトの性質」をお教えください。',
     [
-      { label: 'Webアプリケーション', value: 'web_app' },
-      { label: 'モバイルアプリ', value: 'mobile_app' },
-      { label: 'Web + モバイル', value: 'both' },
-      { label: 'その他', value: 'other' }
+      { label: '新規開発 (Screen法 推奨)', value: '新規開発' },
+      { label: '既存改修・移行 (STEP法 推奨)', value: '既存改修' },
+      { label: '機能追加 (FP法 推奨)', value: '機能追加' },
+      { label: '相談して決めたい', value: 'その他' }
     ]
   );
 }
