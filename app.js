@@ -12,7 +12,31 @@ const state = {
   conversationHistory: [],
   isComplete: false,
   finalMarkdown: null,
-  isWaitingForResponse: false
+  isWaitingForResponse: false,
+  gate: {
+    stage: 'gate1',
+    devType: null,
+    method: null,
+    nfrs: []
+  }
+};
+
+const GATE1_OPTIONS = [
+  { label: '新規開発', value: '新規開発' },
+  { label: '既存移行', value: '既存移行' }
+];
+
+const NFR_OPTIONS = [
+  { label: '可用性', value: '可用性' },
+  { label: 'セキュリティ', value: 'セキュリティ' },
+  { label: '性能', value: '性能' },
+  { label: '保守性', value: '保守性' },
+  { label: '可観測性', value: '可観測性' }
+];
+
+const METHOD_BY_DEVTYPE = {
+  '新規開発': { label: '画面数法', value: '画面数法' },
+  '既存移行': { label: 'STEP法', value: 'STEP法' }
 };
 
 // DOM Elements
@@ -35,14 +59,15 @@ document.addEventListener('DOMContentLoaded', () => {
  * Initialize chat with welcome message
  */
 function initializeChat() {
+  state.gate.stage = 'gate1';
+  state.gate.devType = null;
+  state.gate.method = null;
+  state.gate.nfrs = [];
+  updateInputLock();
+
   addAIMessage(
-    'V2見積もりエージェントです。\n適切な見積り手法を選定するため、まずは「プロジェクトの性質」をお教えください。',
-    [
-      { label: '新規開発 (Screen法 推奨)', value: '新規開発' },
-      { label: '既存改修・移行 (STEP法 推奨)', value: '既存改修' },
-      { label: '機能追加 (FP法 推奨)', value: '機能追加' },
-      { label: '相談して決めたい', value: 'その他' }
-    ]
+    'Gate 1（開発特性）: 「新規開発」か「既存移行」を選択してください。',
+    GATE1_OPTIONS
   );
 }
 
@@ -83,6 +108,12 @@ async function handleSendMessage() {
     return;
   }
 
+  if (state.gate.stage !== 'open') {
+    addAIMessage('通行証（Method/NFR）が未確定です。Gate 1〜3の選択を完了してください。');
+    userInput.value = '';
+    return;
+  }
+
   // Add user message to UI
   addUserMessage(message);
 
@@ -98,6 +129,11 @@ async function handleSendMessage() {
  */
 async function handleOptionClick(option, buttonElement, isMultiSelect = false) {
   if (state.isWaitingForResponse) {
+    return;
+  }
+
+  if (state.gate.stage === 'gate1') {
+    await handleGate1Selection(option, buttonElement);
     return;
   }
 
@@ -140,7 +176,16 @@ async function handleMultiSelectConfirm(optionsContainer) {
   allButtons.forEach(btn => btn.disabled = true);
 
   const combinedMessage = selectedLabels.join('、');
-  addUserMessage(combinedMessage);
+  addUserMessage(`非機能要件: ${combinedMessage}`);
+
+  if (state.gate.stage === 'gate3') {
+    state.gate.nfrs = [...selectedLabels];
+    state.gate.stage = 'open';
+    updateInputLock();
+    await sendMessageToAPI(combinedMessage, combinedMessage);
+    addAIMessage('通行証が揃いました。数値入力や自由記述を開始できます。');
+    return;
+  }
 
   await sendMessageToAPI(combinedMessage);
 }
@@ -148,7 +193,7 @@ async function handleMultiSelectConfirm(optionsContainer) {
 /**
  * Send message to API
  */
-async function sendMessageToAPI(message, selectedOption = null) {
+async function sendMessageToAPI(message, selectedOption = null, options = {}) {
   state.isWaitingForResponse = true;
   showLoading();
 
@@ -201,13 +246,17 @@ async function sendMessageToAPI(message, selectedOption = null) {
       state.finalMarkdown = data.markdown;
 
       // Show AI message
-      addAIMessage(data.message);
+      if (!options.suppressAssistant) {
+        addAIMessage(data.message);
+      }
 
       // Show download button
       showDownloadButton();
     } else {
       // Show AI message with options
-      addAIMessage(data.message, data.options);
+      if (!options.suppressAssistant) {
+        addAIMessage(data.message, data.options);
+      }
     }
 
   } catch (error) {
@@ -388,9 +437,7 @@ function showLoading() {
 function hideLoading() {
   // スピナー非表示はUI安定性のため廃止
   // loading.style.display = 'none';
-  sendBtn.disabled = false;
-  userInput.disabled = false;
-  userInput.focus();
+  updateInputLock();
 }
 
 /**
@@ -461,9 +508,45 @@ async function handleReset() {
   state.isComplete = false;
   state.finalMarkdown = null;
   state.isWaitingForResponse = false;
+  state.gate.stage = 'gate1';
+  state.gate.devType = null;
+  state.gate.method = null;
+  state.gate.nfrs = [];
 
   // Re-initialize
   initializeChat();
+}
+
+function updateInputLock() {
+  const isLocked = state.gate.stage !== 'open';
+  sendBtn.disabled = isLocked || state.isWaitingForResponse;
+  userInput.disabled = isLocked || state.isWaitingForResponse;
+  if (isLocked) {
+    userInput.placeholder = 'Gate 1〜3の選択を完了してください';
+  } else {
+    userInput.placeholder = 'メッセージを入力...';
+    userInput.focus();
+  }
+}
+
+async function handleGate1Selection(option, buttonElement) {
+  const optionsContainer = buttonElement.parentElement;
+  const allButtons = optionsContainer.querySelectorAll('.option-btn');
+  allButtons.forEach(btn => btn.disabled = true);
+
+  addUserMessage(option.label);
+  state.gate.devType = option.value;
+
+  const methodSelection = METHOD_BY_DEVTYPE[option.value];
+  state.gate.method = methodSelection ? methodSelection.value : null;
+
+  addAIMessage(`Gate 2（手法の仮決定）: ${methodSelection.label} を採用します。バックエンドへ通知しました。`);
+  if (methodSelection) {
+    await sendMessageToAPI(methodSelection.label, methodSelection.value, { suppressAssistant: true });
+  }
+
+  state.gate.stage = 'gate3';
+  addAIMessage('Gate 3（非機能要件）: 複数選択してください（複数選択）。', NFR_OPTIONS);
 }
 
 /**
