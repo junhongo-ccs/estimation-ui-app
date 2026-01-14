@@ -4,7 +4,7 @@
  */
 
 // Configuration
-const API_ENDPOINT = 'https://estimation-agent-app.blueplant-e852c27d.eastus2.azurecontainerapps.io/score';
+const API_ENDPOINT = 'https://estimation-agent-core.azurewebsites.net/score';
 
 // State management
 const state = {
@@ -239,7 +239,8 @@ function addAIMessage(message, options = null) {
 
   // Add options if present
   if (options && options.length > 0) {
-    const isMultiSelect = message.includes('複数回答可') || message.includes('複数選択') || message.includes('すべて選んで');
+    // 複数選択モードの判定キーワードを強化
+    const isMultiSelect = /複数回答可|複数選択|すべて選んで|複数選んで|必要なものをすべて/.test(message);
     const optionsEl = createOptionsElement(options, isMultiSelect);
     messageEl.appendChild(optionsEl);
   }
@@ -285,9 +286,35 @@ function createMessageElement(type, content, options = null) {
   // 1. Strip markdown code block markers if present
   displayContent = displayContent.replace(/```markdown\n?|```/g, '').trim();
 
-  // 2. Remove lines that only contain options like [Option 1] [Option 2]
+  // 2. Remove options from text area to turn them into buttons
   if (options && options.length > 0) {
-    displayContent = displayContent.replace(/\s*\[[^\]\n]+\]\s*/g, ' ').trim();
+    // Aggressive line-based cleanup
+    options.forEach(opt => {
+      const escapedOpt = opt.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      // Matches the option label potentially wrapped in brackets, preceded by optional list markers
+      // (e.g., "- [Label]", "1. Label", "[Label]")
+      // Added '.*' to the end to catch trailing punctuation or spaces that LLM sometimes adds.
+      const lineRegex = new RegExp(`^\\s*([-ー•*]|\\d+[.\\)])?\\s*\\[?${escapedOpt}\\]?.*$`, 'gm');
+      displayContent = displayContent.replace(lineRegex, '');
+
+      // Fallback for horizontal options or mixed cases: remove keyword itself
+      const keywordRegex = new RegExp(`\\[?${escapedOpt}\\]?`, 'g');
+      displayContent = displayContent.replace(keywordRegex, '');
+    });
+
+    // Final cleanup of empty brackets, orphaned markers, and excessive newlines
+    displayContent = displayContent.replace(/^\s*[-ー•*.]\s*$/gm, '');
+    displayContent = displayContent.replace(/\[\s*\]/g, '');
+    displayContent = displayContent.replace(/\n{3,}/g, '\n\n');
+    displayContent = displayContent.trim();
+  }
+
+  // --- Multi-select detection ---
+  // If not explicitly set by backend, try to guess from keywords
+  if (typeof isMultiSelect === 'undefined' || isMultiSelect === null) {
+    const multiKeywords = ["複数", "すべて", "全部", "複数回答", "複数選択", "どれか", "いくつか", "お選び"];
+    isMultiSelect = multiKeywords.some(k => content.includes(k));
   }
 
   const contentDiv = document.createElement('div');
