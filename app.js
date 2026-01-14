@@ -35,8 +35,8 @@ const NFR_OPTIONS = [
 ];
 
 const METHOD_BY_DEVTYPE = {
-  '新規開発': { label: '画面数法', value: '画面数法' },
-  '既存移行': { label: 'STEP法', value: 'STEP法' }
+  '新規開発': { label: '画面数法', value: 'screen' },
+  '既存移行': { label: 'STEP法', value: 'step' }
 };
 
 // DOM Elements
@@ -260,11 +260,13 @@ async function sendMessageToAPI(message, selectedOption = null, options = {}) {
     }
 
   } catch (error) {
-    console.error('Error sending message:', error);
-    const errorEl = createMessageElement('ai', '申し訳ございません。エラーが発生しました。もう一度お試しください。\n\nエラー: ' + error.message);
-    errorEl.classList.add('error-message');
-    chatTimeline.appendChild(errorEl);
-    scrollToBottom();
+    if (!options.suppressErrors) {
+      console.error('Error sending message:', error);
+      const errorEl = createMessageElement('ai', '申し訳ございません。エラーが発生しました。もう一度お試しください。\n\nエラー: ' + error.message);
+      errorEl.classList.add('error-message');
+      chatTimeline.appendChild(errorEl);
+      scrollToBottom();
+    }
   } finally {
     hideLoading();
     state.isWaitingForResponse = false;
@@ -543,7 +545,7 @@ async function handleGate1Selection(option, buttonElement) {
   addAIMessage(`Gate 2（手法の仮決定）: ${methodSelection.label} を採用します。バックエンドへ通知しました。`);
   if (methodSelection) {
     try {
-      await sendMessageToAPI(methodSelection.label, methodSelection.value, { suppressAssistant: true });
+      await sendMessageToAPI(methodSelection.label, methodSelection.value, { suppressAssistant: true, suppressErrors: true });
     } catch (error) {
       addAIMessage('手法の通知に失敗しましたが、Gate 3 へ進みます。');
     }
