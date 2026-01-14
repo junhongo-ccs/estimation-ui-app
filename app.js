@@ -79,6 +79,7 @@ function initializeChat() {
   state.gate.nfrs = [];
   state.gate.production = null;
   state.gate.confidence = null;
+  setAlertMode(false);
   updateInputLock();
 
   addAIMessage(
@@ -125,7 +126,7 @@ async function handleSendMessage() {
   }
 
   if (state.gate.stage !== 'open') {
-    addAIMessage('通行証（Method/NFR）が未確定です。Gate 1〜3の選択を完了してください。');
+    addAlertMessage('通行証（Method/NFR）が未確定です。Gate 1〜3の選択を完了してください。');
     userInput.value = '';
     return;
   }
@@ -164,7 +165,7 @@ async function handleOptionClick(option, buttonElement, isMultiSelect = false) {
   }
 
   if (state.gate.stage !== 'open') {
-    addAIMessage('通行証（Method/NFR）が未確定です。Gate 1〜3の選択を完了してください。');
+    addAlertMessage('通行証（Method/NFR）が未確定です。Gate 1〜3の選択を完了してください。');
     return;
   }
 
@@ -321,8 +322,8 @@ function addUserMessage(message) {
 /**
  * Add AI message to chat
  */
-function addAIMessage(message, options = null) {
-  const messageEl = createMessageElement('ai', message, options);
+function addAIMessage(message, options = null, meta = {}) {
+  const messageEl = createMessageElement('ai', message, options, meta);
 
   // Add options if present
   if (options && options.length > 0) {
@@ -339,9 +340,12 @@ function addAIMessage(message, options = null) {
 /**
  * Create message element
  */
-function createMessageElement(type, content, options = null) {
+function createMessageElement(type, content, options = null, meta = {}) {
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${type}-message fade-in`;
+  if (meta.isAlert) {
+    messageDiv.classList.add('is-alert');
+  }
 
   // Create icon
   const iconDiv = document.createElement('div');
@@ -566,6 +570,7 @@ function updateInputLock() {
   } else {
     userInput.placeholder = 'メッセージを入力...';
     userInput.focus();
+    setAlertMode(false);
   }
 }
 
@@ -680,13 +685,13 @@ function addCalcResultCard(calcResult) {
   contentDiv.className = 'message-content';
 
   const range = calcResult.estimated_range;
-  const mm = estimateManMonths(calcResult);
+  const mmRange = estimateManMonthRange(calcResult);
   if (range && typeof range.min !== 'undefined' && typeof range.max !== 'undefined') {
     const formattedMin = formatJPY(range.min);
     const formattedMax = formatJPY(range.max);
-    contentDiv.innerHTML = `見積レンジ: <strong>${formattedMin} 〜 ${formattedMax}</strong>${mm ? ` <span class="mm-badge">${mm} MM</span>` : ''}`;
+    contentDiv.innerHTML = `見積レンジ: <strong>${formattedMin} 〜 ${formattedMax}</strong>${mmRange ? ` <span class="mm-badge">${mmRange} MM</span>` : ''}`;
   } else if (typeof calcResult.estimated_amount !== 'undefined') {
-    contentDiv.innerHTML = `見積結果: <strong>${formatJPY(calcResult.estimated_amount)}</strong>${mm ? ` <span class="mm-badge">${mm} MM</span>` : ''}`;
+    contentDiv.innerHTML = `見積結果: <strong>${formatJPY(calcResult.estimated_amount)}</strong>${mmRange ? ` <span class="mm-badge">${mmRange} MM</span>` : ''}`;
   } else {
     return;
   }
@@ -705,27 +710,49 @@ function addCalcResultCard(calcResult) {
   scrollToBottom();
 }
 
+function addAlertMessage(message) {
+  setAlertMode(true);
+  addAIMessage(message, null, { isAlert: true });
+}
+
+function setAlertMode(enabled) {
+  chatTimeline.classList.toggle('alert-mode', enabled);
+}
+
 function formatJPY(value) {
   if (typeof value !== 'number') return value;
   return value.toLocaleString('ja-JP') + '円';
 }
 
-function estimateManMonths(calcResult) {
+function estimateManMonthRange(calcResult) {
   const breakdown = calcResult && calcResult.breakdown;
   if (!breakdown) return null;
   const buckets = ['development', 'phase2_design', 'phase3_visual'];
-  let totalDays = 0;
+  let minDays = 0;
+  let maxDays = 0;
   let seen = false;
   buckets.forEach((key) => {
     const item = breakdown[key];
-    if (item && typeof item.total_days === 'number') {
-      totalDays += item.total_days;
-      seen = true;
+    if (!item || typeof item.total_days !== 'number') {
+      return;
     }
+    const totalDays = item.total_days;
+    if (item.range && typeof item.range.min === 'number' && typeof item.range.max === 'number' && typeof item.cost === 'number' && item.cost > 0) {
+      minDays += totalDays * (item.range.min / item.cost);
+      maxDays += totalDays * (item.range.max / item.cost);
+    } else {
+      minDays += totalDays;
+      maxDays += totalDays;
+    }
+    seen = true;
   });
   if (!seen || MAN_DAYS_PER_MM <= 0) return null;
-  const mm = totalDays / MAN_DAYS_PER_MM;
-  return mm.toFixed(1);
+  const minMm = minDays / MAN_DAYS_PER_MM;
+  const maxMm = maxDays / MAN_DAYS_PER_MM;
+  if (Math.abs(minMm - maxMm) < 0.05) {
+    return minMm.toFixed(1);
+  }
+  return `${minMm.toFixed(1)} 〜 ${maxMm.toFixed(1)}`;
 }
 
 /**

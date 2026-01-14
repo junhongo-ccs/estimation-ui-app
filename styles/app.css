@@ -194,6 +194,25 @@ body {
     height: 24px;
 }
 
+.message.is-alert .message-content {
+    background: #ffe8e8;
+    border: 1px solid #f3b1b1;
+    color: #9f1c1c;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 12px;
+}
+
+.message.is-alert .message-content::before {
+    content: "⚠️";
+    margin-right: 6px;
+}
+
+.chat-timeline.alert-mode .message-options {
+    opacity: 0.35;
+    filter: grayscale(1) blur(0.6px);
+}
+
 .mm-badge {
     display: inline-flex;
     align-items: center;
