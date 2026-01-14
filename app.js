@@ -17,9 +17,13 @@ const state = {
     stage: 'gate1',
     devType: null,
     method: null,
-    nfrs: []
+    nfrs: [],
+    production: null,
+    confidence: null
   }
 };
+
+const MAN_DAYS_PER_MM = 20;
 
 const GATE1_OPTIONS = [
   { label: '新規開発', value: '新規開発' },
@@ -39,6 +43,16 @@ const METHOD_BY_DEVTYPE = {
   '既存移行': { label: 'STEP法', value: 'step' }
 };
 
+const GATE4_OPTIONS = [
+  { label: '内製（確定値）', value: 'internal' },
+  { label: '外注（レンジ）', value: 'external' }
+];
+
+const CONFIDENCE_OPTIONS = [
+  { label: '要件がまだ曖昧', value: 'low' },
+  { label: '標準的', value: 'medium' },
+  { label: '仕様確定済み', value: 'high' }
+];
 // DOM Elements
 const chatTimeline = document.getElementById('chat-timeline');
 const userInput = document.getElementById('user-input');
@@ -63,6 +77,8 @@ function initializeChat() {
   state.gate.devType = null;
   state.gate.method = null;
   state.gate.nfrs = [];
+  state.gate.production = null;
+  state.gate.confidence = null;
   updateInputLock();
 
   addAIMessage(
@@ -137,6 +153,21 @@ async function handleOptionClick(option, buttonElement, isMultiSelect = false) {
     return;
   }
 
+  if (state.gate.stage === 'gate4_type') {
+    await handleGate4Selection(option, buttonElement);
+    return;
+  }
+
+  if (state.gate.stage === 'gate4_confidence') {
+    await handleConfidenceSelection(option, buttonElement);
+    return;
+  }
+
+  if (state.gate.stage !== 'open') {
+    addAIMessage('通行証（Method/NFR）が未確定です。Gate 1〜3の選択を完了してください。');
+    return;
+  }
+
   if (isMultiSelect) {
     // Toggle selection
     buttonElement.classList.toggle('selected');
@@ -180,10 +211,10 @@ async function handleMultiSelectConfirm(optionsContainer) {
 
   if (state.gate.stage === 'gate3') {
     state.gate.nfrs = [...selectedLabels];
-    state.gate.stage = 'open';
     updateInputLock();
-    await sendMessageToAPI(combinedMessage, combinedMessage);
-    addAIMessage('通行証が揃いました。数値入力や自由記述を開始できます。');
+    await sendMessageToAPI(combinedMessage, combinedMessage, { suppressErrors: true });
+    state.gate.stage = 'gate4_type';
+    addAIMessage('Gate 4（制作主体）: 「内製」か「外注」を選択してください。', GATE4_OPTIONS);
     return;
   }
 
@@ -212,7 +243,8 @@ async function sendMessageToAPI(message, selectedOption = null, options = {}) {
         selected_option: selectedOption
       },
       session_id: state.sessionId,
-      conversation_history: state.conversationHistory
+      conversation_history: state.conversationHistory,
+      calc_payload: buildCalcPayload()
     };
 
     const response = await fetch(API_ENDPOINT, {
@@ -239,6 +271,10 @@ async function sendMessageToAPI(message, selectedOption = null, options = {}) {
       { role: 'user', content: message },
       { role: 'assistant', content: data.message }
     );
+
+    if (data.calc_result) {
+      addCalcResultCard(data.calc_result);
+    }
 
     // Check if conversation is complete
     if (data.is_complete) {
@@ -514,6 +550,8 @@ async function handleReset() {
   state.gate.devType = null;
   state.gate.method = null;
   state.gate.nfrs = [];
+  state.gate.production = null;
+  state.gate.confidence = null;
 
   // Re-initialize
   initializeChat();
@@ -553,6 +591,141 @@ async function handleGate1Selection(option, buttonElement) {
 
   state.gate.stage = 'gate3';
   addAIMessage('Gate 3（非機能要件）: 複数選択してください（複数選択）。', NFR_OPTIONS);
+}
+
+async function handleGate4Selection(option, buttonElement) {
+  const optionsContainer = buttonElement.parentElement;
+  const allButtons = optionsContainer.querySelectorAll('.option-btn');
+  allButtons.forEach(btn => btn.disabled = true);
+
+  addUserMessage(option.label);
+  state.gate.production = option.value;
+
+  if (option.value === 'external') {
+    state.gate.stage = 'gate4_confidence';
+    addAIMessage('Gate 4（制作主体）: 外注の場合は要件の確定度（Confidence）を選択してください。', CONFIDENCE_OPTIONS);
+    return;
+  }
+
+  state.gate.stage = 'open';
+  updateInputLock();
+  await sendMessageToAPI(option.label, option.value, { suppressErrors: true });
+  addAIMessage('通行証が揃いました。数値入力や自由記述を開始できます。');
+}
+
+async function handleConfidenceSelection(option, buttonElement) {
+  const optionsContainer = buttonElement.parentElement;
+  const allButtons = optionsContainer.querySelectorAll('.option-btn');
+  allButtons.forEach(btn => btn.disabled = true);
+
+  addUserMessage(option.label);
+  state.gate.confidence = option.value;
+  state.gate.stage = 'open';
+  updateInputLock();
+  await sendMessageToAPI(option.label, option.value, { suppressErrors: true });
+  addAIMessage('通行証が揃いました。数値入力や自由記述を開始できます。');
+}
+
+function buildCalcPayload() {
+  if (state.gate.stage !== 'open') {
+    return null;
+  }
+
+  const payload = {
+    dev_type: state.gate.devType,
+    method: state.gate.method,
+    nfrs: [...state.gate.nfrs],
+    production: state.gate.production,
+    phase_breakdown: {
+      design: [],
+      development: [],
+      testing: []
+    },
+    evidence: {
+      gate1: state.gate.devType,
+      gate2: state.gate.method,
+      gate3: [...state.gate.nfrs],
+      gate4: state.gate.production,
+      confidence: state.gate.confidence
+    }
+  };
+
+  if (state.gate.production === 'external') {
+    payload.confidence = state.gate.confidence;
+  }
+
+  return payload;
+}
+
+function addCalcResultCard(calcResult) {
+  const resultEl = document.createElement('div');
+  resultEl.className = 'message ai-message fade-in';
+
+  const iconDiv = document.createElement('div');
+  iconDiv.className = 'message-icon';
+  iconDiv.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 8V4H8"></path>
+      <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+      <path d="M2 14h2"></path>
+      <path d="M20 14h2"></path>
+      <path d="M15 13v2"></path>
+      <path d="M9 13v2"></path>
+    </svg>`;
+
+  const bodyDiv = document.createElement('div');
+  bodyDiv.className = 'message-body';
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'message-content';
+
+  const range = calcResult.estimated_range;
+  const mm = estimateManMonths(calcResult);
+  if (range && typeof range.min !== 'undefined' && typeof range.max !== 'undefined') {
+    const formattedMin = formatJPY(range.min);
+    const formattedMax = formatJPY(range.max);
+    contentDiv.innerHTML = `見積レンジ: <strong>${formattedMin} 〜 ${formattedMax}</strong>${mm ? ` <span class="mm-badge">${mm} MM</span>` : ''}`;
+  } else if (typeof calcResult.estimated_amount !== 'undefined') {
+    contentDiv.innerHTML = `見積結果: <strong>${formatJPY(calcResult.estimated_amount)}</strong>${mm ? ` <span class="mm-badge">${mm} MM</span>` : ''}`;
+  } else {
+    return;
+  }
+
+  const timestampDiv = document.createElement('div');
+  timestampDiv.className = 'message-timestamp';
+  timestampDiv.textContent = getCurrentTime();
+
+  bodyDiv.appendChild(contentDiv);
+  bodyDiv.appendChild(timestampDiv);
+
+  resultEl.appendChild(iconDiv);
+  resultEl.appendChild(bodyDiv);
+
+  chatTimeline.appendChild(resultEl);
+  scrollToBottom();
+}
+
+function formatJPY(value) {
+  if (typeof value !== 'number') return value;
+  return value.toLocaleString('ja-JP') + '円';
+}
+
+function estimateManMonths(calcResult) {
+  const breakdown = calcResult && calcResult.breakdown;
+  if (!breakdown) return null;
+  const buckets = ['development', 'phase2_design', 'phase3_visual'];
+  let totalDays = 0;
+  let seen = false;
+  buckets.forEach((key) => {
+    const item = breakdown[key];
+    if (item && typeof item.total_days === 'number') {
+      totalDays += item.total_days;
+      seen = true;
+    }
+  });
+  if (!seen || MAN_DAYS_PER_MM <= 0) return null;
+  const mm = totalDays / MAN_DAYS_PER_MM;
+  return mm.toFixed(1);
 }
 
 /**
