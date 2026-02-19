@@ -164,6 +164,11 @@ async function handleOptionClick(option, buttonElement, isMultiSelect = false) {
     return;
   }
 
+  if (state.gate.stage === 'gate3') {
+    buttonElement.classList.toggle('selected');
+    return;
+  }
+
   if (state.gate.stage !== 'open') {
     addAlertMessage('通行証（Method/NFR）が未確定です。Gate 1〜3の選択を完了してください。');
     return;
@@ -192,7 +197,7 @@ async function handleOptionClick(option, buttonElement, isMultiSelect = false) {
 /**
  * Handle confirmation of multiple selections
  */
-async function handleMultiSelectConfirm(optionsContainer) {
+async function handleConfirmNFR(optionsContainer) {
   if (state.isWaitingForResponse) return;
 
   const selectedButtons = optionsContainer.querySelectorAll('.option-btn.selected');
@@ -456,7 +461,7 @@ function createOptionsElement(options, isMultiSelect = false) {
     const confirmBtn = document.createElement('button');
     confirmBtn.className = 'btn btn-primary btn-sm btn-confirm';
     confirmBtn.textContent = '選択を確定する';
-    confirmBtn.addEventListener('click', () => handleMultiSelectConfirm(optionsDiv));
+    confirmBtn.addEventListener('click', () => handleConfirmNFR(optionsDiv));
     optionsDiv.appendChild(confirmBtn);
   }
 
@@ -595,7 +600,7 @@ async function handleGate1Selection(option, buttonElement) {
   }
 
   state.gate.stage = 'gate3';
-  addAIMessage('Gate 3（非機能要件）: 複数選択してください（複数選択）。', NFR_OPTIONS);
+  addAIMessage('非機能要件を選択してください。複数選択の際には、必要な項目をすべて選んでから「確定」ボタンを押してください。', NFR_OPTIONS);
 }
 
 async function handleGate4Selection(option, buttonElement) {
