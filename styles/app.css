@@ -557,18 +557,22 @@ body {
    App Viewport (Iframe container)
    ============================================ */
 .app-viewport {
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
     background: #fff;
-    display: flex;
-    /* overridden by display: none in HTML/JS */
+    display: none;
+    /* Controlled by JS */
 }
 
 #dify-iframe {
     width: 100%;
     height: 100%;
     border: none;
+    display: block;
 }
 
 /* ============================================
