@@ -5,6 +5,7 @@
 
 // Configuration
 const API_ENDPOINT = 'https://estimation-agent-core.azurewebsites.net/score';
+const AUTH_PASSWORD = 'ccs-bs-expert'; // 暫定パスワード
 
 // State management
 const state = {
@@ -13,6 +14,7 @@ const state = {
   isComplete: false,
   finalMarkdown: null,
   isWaitingForResponse: false,
+  isAuthenticated: false,
   gate: {
     stage: 'gate1',
     devType: null,
@@ -54,6 +56,12 @@ const CONFIDENCE_OPTIONS = [
   { label: '仕様確定済み', value: 'high' }
 ];
 // DOM Elements
+const authGate = document.getElementById('auth-gate');
+const appContainer = document.getElementById('app-container');
+const loginBtn = document.getElementById('login-btn');
+const loginPasswordInput = document.getElementById('password');
+const authError = document.getElementById('auth-error');
+
 const chatTimeline = document.getElementById('chat-timeline');
 const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
@@ -65,9 +73,44 @@ const loading = document.getElementById('loading');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  initializeChat();
+  checkAuth();
   setupEventListeners();
 });
+
+/**
+ * Check if the user is already authenticated
+ */
+function checkAuth() {
+  const isAuth = sessionStorage.getItem('is_authenticated');
+  if (isAuth === 'true') {
+    grantAccess();
+  }
+}
+
+/**
+ * Handle Login
+ */
+function handleLogin() {
+  const password = loginPasswordInput.value.trim();
+  if (password === AUTH_PASSWORD) {
+    sessionStorage.setItem('is_authenticated', 'true');
+    grantAccess();
+  } else {
+    authError.style.display = 'block';
+    loginPasswordInput.value = '';
+    loginPasswordInput.focus();
+  }
+}
+
+/**
+ * Grant access to the app
+ */
+function grantAccess() {
+  state.isAuthenticated = true;
+  authGate.style.display = 'none';
+  appContainer.style.display = 'flex';
+  initializeChat();
+}
 
 /**
  * Initialize chat with welcome message
@@ -92,6 +135,16 @@ function initializeChat() {
  * Setup event listeners
  */
 function setupEventListeners() {
+  // Login button click
+  loginBtn.addEventListener('click', handleLogin);
+
+  // Login password enter key
+  loginPasswordInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  });
+
   // Send button click
   sendBtn.addEventListener('click', handleSendMessage);
 

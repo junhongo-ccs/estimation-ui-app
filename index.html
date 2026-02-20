@@ -10,7 +10,28 @@
 </head>
 
 <body>
-  <div class="container">
+  <!-- Password Gate -->
+  <div id="auth-gate" class="auth-gate">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1>AI見積もりシステム</h1>
+        <p>BS事業部 専用ツール</p>
+      </div>
+      <div class="auth-body">
+        <div class="form-group">
+          <label for="password">パスワード</label>
+          <input type="password" id="password" class="input-field" placeholder="Password を入力...">
+        </div>
+        <button id="login-btn" class="btn btn-primary btn-block">ログイン</button>
+        <p id="auth-error" class="error-text" style="display: none;">パスワードが正しくありません。</p>
+      </div>
+      <div class="auth-footer">
+        <p>© NTT DATA CCS / BS Headquarters</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-container" class="container" style="display: none;">
     <main class="main">
       <!-- ユーティリティボタン（やり直し） -->
       <div class="chat-utilities">
