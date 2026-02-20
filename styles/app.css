@@ -554,6 +554,24 @@ body {
 }
 
 /* ============================================
+   App Viewport (Iframe container)
+   ============================================ */
+.app-viewport {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #fff;
+    display: flex;
+    /* overridden by display: none in HTML/JS */
+}
+
+#dify-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ============================================
    Responsive - 8px Grid
    ============================================ */
 
@@ -650,6 +668,7 @@ body {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);

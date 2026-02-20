@@ -31,40 +31,12 @@
     </div>
   </div>
 
-  <div id="app-container" class="container" style="display: none;">
-    <main class="main">
-      <!-- ユーティリティボタン（やり直し） -->
-      <div class="chat-utilities">
-        <button id="reset-btn" class="btn btn-outline-danger btn-sm">最初からやり直す</button>
-      </div>
-
-      <!-- チャットタイムライン -->
-      <div class="chat-timeline" id="chat-timeline">
-        <!-- メッセージがここに追加されます -->
-        <div class="loading" id="loading" style="display: none;">
-          <div class="spinner"></div>
-          <p>AI が回答を生成中...</p>
-        </div>
-      </div>
-
-      <!-- 入力エリア -->
-      <div class="input-area">
-        <input type="text" id="user-input" class="input-field" placeholder="メッセージを入力..." autocomplete="off">
-        <button id="send-btn" class="btn btn-primary compact-icon-btn">
-          <img src="/paper-plane.png" alt="送信" width="24" height="24">
-        </button>
-      </div>
-
-      <!-- ダウンロードエリア（会話完了時に表示） -->
-      <div class="download-area" id="download-area" style="display: none;">
-        <button id="download-btn" class="btn btn-success">
-          📥 見積もり書をダウンロード
-        </button>
-      </div>
-
-    </main>
+  <div id="app-container" class="app-viewport" style="display: none;">
+    <iframe id="dify-iframe" src="https://udify.app/chat/26Lce3qq5Wt1kFel" frameborder="0" allow="microphone">
+    </iframe>
   </div>
 
+  <!-- Legacy script still needed for auth logic -->
   <script src="app.js"></script>
 </body>
 
